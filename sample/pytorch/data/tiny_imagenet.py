@@ -5,6 +5,8 @@ import os, csv
 from torchvision.datasets import VisionDataset
 from torchvision.datasets.folder import default_loader
 from torchvision.datasets.utils import extract_archive, check_integrity, download_url, verify_str_arg
+import pytorch_lightning as pl
+from torch.utils.data import DataLoader
 
 
 class TinyImageNet(VisionDataset):
