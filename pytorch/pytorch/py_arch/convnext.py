@@ -8,8 +8,8 @@ import pytorch_lightning as pl
 
 from torchvision.ops import stochastic_depth
 
-from structure.pytorch.py_arch.bayes.core import log_bayesian_iteration 
-from structure.pytorch.py_arch.base import LayerScaler
+from pytorch.pytorch.py_arch.bayes.core import log_bayesian_iteration 
+from pytorch.pytorch.py_arch.base import LayerScaler
 
 class ConvNextForImageClassification(pl.LightningModule):
     def __init__(

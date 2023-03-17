@@ -1,6 +1,6 @@
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
-from structure.pytorch.data.tiny_imagenet import TinyImageNet
+from pytorch.pytorch.data.tiny_imagenet import TinyImageNet
 
 
 class TinyImageNetDataModule(pl.LightningDataModule):

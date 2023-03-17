@@ -9,8 +9,8 @@ from einops.layers.torch import Rearrange
 
 # from sunyata.pytorch.arch.base import BaseCfg, ConvMixerLayer, LayerScaler
 # from sunyata.pytorch_lightning.base import BaseModule
-from structure.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LayerScaler
-from structure.pytorch_lightning.base import BaseModule
+from pytorch.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LayerScaler
+from pytorch.pytorch_lightning.base import BaseModule
 
 
 class Squeeze(nn.Module):

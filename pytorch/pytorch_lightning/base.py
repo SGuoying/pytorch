@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 
-from structure.pytorch.py_arch.base import BaseCfg, RevSGD
+from pytorch.pytorch.py_arch.base import BaseCfg, RevSGD
 
 
 class BaseModule(pl.LightningModule):

@@ -6,8 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from timm.models.layers import trunc_normal_, DropPath
 from timm.models.registry import register_model
-from structure.pytorch.py_arch.base import Residual
-from structure.pytorch.py_arch.deepattn import AttnLayer, Squeeze
+from pytorch.pytorch.py_arch.base import Residual
+from pytorch.pytorch.py_arch.deepattn import AttnLayer, Squeeze
 
 
 class LayerNorm(nn.Module):

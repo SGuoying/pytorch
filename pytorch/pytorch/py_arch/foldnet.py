@@ -5,11 +5,11 @@ import torch.nn.functional as F
 
 from einops import repeat
 import pytorch_lightning as pl
-from structure.pytorch.py_arch.base import BaseCfg, Residual, ConvMixerLayer
-from structure.pytorch_lightning.base import BaseModule
+from pytorch.pytorch.py_arch.base import BaseCfg, Residual, ConvMixerLayer
+from pytorch.pytorch_lightning.base import BaseModule
 
-from structure.pytorch.py_arch.convnext import BottleNeckBlock
-from structure.pytorch.py_arch.patchconvnet import PatchConvBlock
+from pytorch.pytorch.py_arch.convnext import BottleNeckBlock
+from pytorch.pytorch.py_arch.patchconvnet import PatchConvBlock
 
 
 @dataclass

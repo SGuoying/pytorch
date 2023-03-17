@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops.layers.torch import Rearrange
 
-from structure.pytorch.py_arch.base import ConvMixerLayer, LayerScaler
+from pytorch.pytorch.py_arch.base import ConvMixerLayer, LayerScaler
 
 class Squeeze(nn.Module):
     def __init__(
