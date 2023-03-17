@@ -4,11 +4,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-from pytorch.pytorch.py_arch.base import BaseCfg
-from pytorch.pytorch_lightning.base import BaseModule
+from sample.pytorch.py_arch.base import BaseCfg
+from sample.pytorch_lightning.base import BaseModule
 
-from pytorch.pytorch.py_arch.deepattn import AttnLayer
-from pytorch.pytorch.py_arch.convnext2 import Block, LayerNorm
+from sample.pytorch.py_arch.deepattn import AttnLayer
+from sample.pytorch.py_arch.convnext2 import Block, LayerNorm
 
 
 class Layer(nn.Module):

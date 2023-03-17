@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pytorch.pytorch.py_arch.base import LayerScaler, LayerNorm2d
+from sample.pytorch.py_arch.base import LayerScaler, LayerNorm2d
 from torchvision.ops.misc import SqueezeExcitation
 from torchvision.ops import StochasticDepth
 # %%

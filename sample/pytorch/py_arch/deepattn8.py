@@ -1,5 +1,5 @@
 """
-Based on deepattn7, add squeeze with a shift.
+Based on deepattn7, add query_squeeze.
 """
 from dataclasses import dataclass
 import torch
@@ -9,8 +9,8 @@ from einops.layers.torch import Rearrange
 
 # from sunyata.pytorch.arch.base import BaseCfg, ConvMixerLayer, LayerScaler
 # from sunyata.pytorch_lightning.base import BaseModule
-from pytorch.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LayerScaler
-from pytorch.pytorch_lightning.base import BaseModule
+from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LayerScaler
+from sample.pytorch_lightning.base import BaseModule
 
 
 class Squeeze(nn.Module):
@@ -25,13 +25,10 @@ class Squeeze(nn.Module):
             nn.Flatten(),
             LayerScaler(hidden_dim, init_scale),
         )
-        self.shift = nn.Parameter(init_scale * torch.rand(hidden_dim))
 
     def forward(self, x):
         # x shape (batch_size, hidden_dim, height, weight)
         squeezed = self.squeeze(x)
-        # squeezed shape (batch_size, hidden_dim)
-        squeezed = squeezed + self.shift
         return squeezed
 
 
@@ -69,6 +66,7 @@ class AttnLayer(nn.Module):
         super().__init__()
         assert hidden_dim % num_heads == 0
         self.squeeze = Squeeze(hidden_dim, init_scale)
+        self.query_squeeze = Squeeze(hidden_dim, init_scale)
         self.attn = Attn(num_heads, temperature)
         self.num_heads = num_heads
         self.query_idx = query_idx
@@ -78,7 +76,7 @@ class AttnLayer(nn.Module):
         squeezed = self.squeeze(xs[-1]).unsqueeze(0)
         all_squeezed = torch.cat([all_squeezed, squeezed])
         # all_squeezed shape (current_depth, batch_size, hidden_dim)
-        query = all_squeezed[self.query_idx,:,:]
+        query = self.query_squeeze(xs[-1])
         keys = all_squeezed
         attended = self.attn(query, keys)
         # attended shape (current_depth, batch_size, num_heads)
@@ -167,4 +165,4 @@ class DeepAttn(BaseModule):
         self.log(mode + "_loss", loss, prog_bar=True)
         accuracy = (logits.argmax(dim=1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
-        return loss    
+        return loss  

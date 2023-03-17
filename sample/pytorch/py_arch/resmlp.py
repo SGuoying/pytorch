@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from einops import repeat
 from einops.layers.torch import Rearrange, Reduce
 
-from pytorch.pytorch.py_arch.bayes.core import log_bayesian_iteration
+from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
 
 pair = lambda x: x if isinstance(x, tuple) else (x, x)
 
@@ -149,4 +149,4 @@ class PreAffinePostLayerScale(nn.Module):
         self.fn = fn
 
     def forward(self, x):
-        return self.fn(self.affine(x)) * self.scale + 
+        return self.fn(self.affine(x)) * self.scale + x
