@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import repeat
 from einops.layers.torch import Rearrange, Reduce
-from sample.pytorch_lightning.base import BaseModule
+
 
 from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
 
