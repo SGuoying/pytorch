@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import repeat
 from einops.layers.torch import Rearrange, Reduce
+from sample.pytorch_lightning.base import BaseModule
 
 from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
 
@@ -13,12 +14,12 @@ pair = lambda x: x if isinstance(x, tuple) else (x, x)
 
 @dataclass
 class DeepBayesInferResMlpCfg:
-    image_size: int = 32  # 224
-    patch_size: int = 4  # 16
+    image_size: int = 256  # 224
+    patch_size: int = 16  # 16
     hidden_dim: int = 128
     expansion_factor: int = 4
 
-    num_layers: int = 8
+    num_layers: int = 12
     num_classes: int = 10
     channels: int = 3
 
@@ -31,6 +32,51 @@ class DeepBayesInferResMlpCfg:
     learning_rate_scheduler: str = "CosineAnnealing"
     weight_decay: float = None  # of "AdamW"
 
+
+class ResMlp(pl.LightningModule):
+    def __init__(self, cfg: DeepBayesInferResMlpCfg):
+        super().__init__()
+        image_h, image_w = pair(cfg.image_size)
+        assert (image_h % cfg.patch_size) == 0 and (image_w % cfg.patch_size) == 0, 'image must be divisible by patch size'
+        num_patches = (image_h // cfg.patch_size) * (image_w // cfg.patch_size)
+        wrapper = lambda i, fn: PreAffinePostLayerScale(cfg.hidden_dim, i + 1, fn)
+
+        self.layers = nn.ModuleList([
+            nn.Sequential(
+                wrapper(i, nn.Conv1d(num_patches, num_patches, 1)),
+                wrapper(i, nn.Sequential(
+                    nn.Linear(cfg.hidden_dim, cfg.hidden_dim * cfg.expansion_factor),
+                    nn.GELU(),
+                    nn.Linear(cfg.hidden_dim * cfg.expansion_factor, cfg.hidden_dim)
+                ))
+            ) for i in range(cfg.num_layers)
+        ])
+
+        self.embed = nn.Sequential(
+            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=cfg.patch_size, p2=cfg.patch_size),
+            nn.Linear((cfg.patch_size ** 2) * cfg.channels, cfg.hidden_dim)
+        )
+
+        self.digup = nn.Sequential(
+            Affine(cfg.hidden_dim),
+            Reduce('b n c -> b c', 'mean'),
+            nn.Linear(cfg.hidden_dim, cfg.num_classes)
+        )
+
+    def forward(self, x):
+        x = self.embed(x)
+        x= self.layers(x)
+        x= self.digup(x)
+        return x
+
+    def _step(self, batch, mode="train"):  # or "val"
+        input, target = batch
+        logits = self.forward(input)
+        loss = F.cross_entropy(logits, target)
+        self.log(mode + "_loss", loss, prog_bar=True)
+        accuracy = (logits.argmax(dim=1) == target).float().mean()
+        self.log(mode + "_accuracy", accuracy, prog_bar=True)
+        return loss
 
 
 class DeepBayesInferResMlp(pl.LightningModule):
