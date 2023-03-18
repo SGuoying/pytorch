@@ -76,6 +76,30 @@ class ResMlp(pl.LightningModule):
         accuracy = (logits.argmax(dim=1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss
+    
+    def training_step(self, batch, batch_idx):
+        return self._step(batch, mode="train")
+
+    def validation_step(self, batch, batch_idx):
+        return self._step(batch, mode="val")
+
+    def configure_optimizers(self):
+        if self.cfg.optimizer_method == "Adam":
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.cfg.learning_rate)
+        elif self.cfg.optimizer_method == "AdamW":
+            optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.learning_rate, weight_decay=self.cfg.weight_decay)
+        else:
+            raise Exception("Only support Adam and AdamW optimizer till now.")
+
+        if self.cfg.learning_rate_scheduler == "CosineAnnealing":
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, self.cfg.num_epochs)
+        else:
+            lr_scheduler = None
+
+        if lr_scheduler is None:
+            return optimizer
+        else:
+            return [optimizer], [lr_scheduler]
 
 
 class DeepBayesInferResMlp(pl.LightningModule):
