@@ -17,6 +17,7 @@ class DeepBayesInferResMlpCfg:
     patch_size: int = 16  # 16
     hidden_dim: int = 128
     expansion_factor: int = 4
+    batch_size: int = 128
 
     num_layers: int = 12
     num_classes: int = 10
