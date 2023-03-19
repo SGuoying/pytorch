@@ -336,27 +336,19 @@ class UpdateBayesConvMixer2(ConvMixer):
         for layer in self.layers:
             x = layer(x)
             logits = self.digup(x) 
-            log_posterior = log_prior + logits
-            log_denominator = torch.logsumexp(log_posterior, dim=-1)
-            log_numerator = log_posterior - log_denominator.unsqueeze(-1)
-            log_prior = F.log_softmax(self.log_prior, dim=-1)
-            log_posterior = F.log_softmax(log_posterior, dim=-1)
-            log_evidence = log_denominator - math.log(self.cfg.num_classes)
+            exp_logits = torch.exp(logits)
+            sum_exp_logits = exp_logits.sum(dim=1, keepdim=True)
+            logits = exp_logits / sum_exp_logits
+            log_prior = torch.log(logits + 1e-20)  # 加上 1e-20 避免对数操作时出现 NaN
+            log_prior = log_prior - torch.logsumexp(log_prior, dim=1, keepdim=True)  # 对数 softmax 归一化
 
-        return log_prior, log_posterior, log_evidence
+        return log_prior
 
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
-        log_prior, log_posterior, log_evidence = self.forward(input)
-        loss = loss_fn(log_prior, log_posterior, log_evidence, target)
+        log_posterior = self.forward(input)
+        loss = F.nll_loss(log_posterior, target)
         self.log(mode + "_loss", loss, prog_bar=True)
         accuracy = (log_posterior.argmax(dim=-1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss
-
-
-def loss_fn(log_prior, log_posterior, log_evidence, y):
-    log_likelihood = log_posterior.gather(1, y.view(-1, 1)).squeeze()
-    kl_divergence = log_posterior - log_prior
-    elbo = log_likelihood + log_evidence - kl_divergence.sum(dim=1)
-    return -elbo.mean()
