@@ -66,17 +66,26 @@ class ResMlp(pl.LightningModule):
 
     def forward(self, x):
         x = self.embed(x)
-        x= self.layers(x)
-        x= self.digup(x)
+        # x = self.layers(x)
+        for layer in self.layers:
+            x = layer(x)
+        x = self.digup(x)
         return x
 
     def _step(self, batch, mode="train"):  # or "val"
+        # input, target = batch
+        # logits = self.forward(input)
+        # loss = F.cross_entropy(logits, target)
+        # self.log(mode + "_loss", loss, prog_bar=True)
+        # accuracy = (logits.argmax(dim=1) == target).float().mean()
+        # self.log(mode + "_accuracy", accuracy, prog_bar=True)
+        # return loss
         input, target = batch
-        logits = self.forward(input)
-        loss = F.cross_entropy(logits, target)
-        self.log(mode + "_loss", loss, prog_bar=True)
-        accuracy = (logits.argmax(dim=1) == target).float().mean()
-        self.log(mode + "_accuracy", accuracy, prog_bar=True)
+        log_posterior = self.forward(input)
+        loss = F.nll_loss(log_posterior, target)
+        self.log(mode + "_loss", loss)
+        accuracy = (log_posterior.argmax(dim=-1) == target).float().mean()
+        self.log(mode + "_accuracy", accuracy)
         return loss
     
     def training_step(self, batch, batch_idx):
