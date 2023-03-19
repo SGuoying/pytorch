@@ -76,7 +76,7 @@ class ResMlp(BaseModule):
             Reduce('b n c -> b c', 'mean'),
             nn.Linear(cfg.hidden_dim, cfg.num_classes)
         )
-        self.cfg = cfg
+        # self.cfg = cfg
 
     def forward(self, x):
         x = self.embed(x)
