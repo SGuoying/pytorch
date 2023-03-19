@@ -321,8 +321,8 @@ class UpdateBayesConvMixer2(ConvMixer):
     def __init__(self, cfg:ConvMixerCfg):
         super().__init__(cfg)
 
-        log_prior = torch.zeros(1, cfg.num_classes)
-        # log_prior = nn.Parameter(torch.zeros(1, cfg.num_classes))
+        # log_prior = torch.zeros(1, cfg.num_classes)
+        log_prior = nn.Parameter(torch.zeros(1, cfg.num_classes))
         self.register_buffer('log_prior', log_prior) 
 
         self.cfg = cfg
@@ -336,20 +336,27 @@ class UpdateBayesConvMixer2(ConvMixer):
         for layer in self.layers:
             x = layer(x)
             logits = self.digup(x) 
-            log_posterior = logits
-            log_likelihood = F.log_softmax(logits, dim=-1)
-            log_posterior += log_prior
-            log_prior += log_likelihood
-            log_prob = log_prior - log_posterior
-            log_prior = torch.exp(F.log_softmax(log_prob, dim=-1) + math.log(self.cfg.num_classes))
-        
-        return log_prior
+            log_posterior = log_prior + logits
+            log_denominator = torch.logsumexp(log_posterior, dim=-1)
+            log_numerator = log_posterior - log_denominator.unsqueeze(-1)
+            log_prior = F.log_softmax(self.log_prior, dim=-1)
+            log_posterior = F.log_softmax(log_posterior, dim=-1)
+            log_evidence = log_denominator - math.log(self.cfg.num_classes)
+
+        return log_prior, log_posterior, log_evidence
 
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
-        log_posterior = self.forward(input)
-        loss = F.nll_loss(log_posterior, target)
+        log_prior, log_posterior, log_evidence = self.forward(input)
+        loss = loss_fn(log_prior, log_posterior, log_evidence, target)
         self.log(mode + "_loss", loss, prog_bar=True)
         accuracy = (log_posterior.argmax(dim=-1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss
+
+
+def loss_fn(log_prior, log_posterior, log_evidence, y):
+    log_likelihood = log_posterior.gather(1, y.view(-1, 1)).squeeze()
+    kl_divergence = log_posterior - log_prior
+    elbo = log_likelihood + log_evidence - kl_divergence.sum(dim=1)
+    return -elbo.mean()
