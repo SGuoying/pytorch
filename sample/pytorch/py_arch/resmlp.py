@@ -49,7 +49,7 @@ class ResMlpCfg(BaseCfg):
 
 class ResMlp(BaseModule):
     def __init__(self, cfg: ResMlpCfg):
-        super().__init__()
+        super().__init__(cfg)
         image_h, image_w = pair(cfg.image_size)
         assert (image_h % cfg.patch_size) == 0 and (image_w % cfg.patch_size) == 0, 'image must be divisible by patch size'
         num_patches = (image_h // cfg.patch_size) * (image_w // cfg.patch_size)
