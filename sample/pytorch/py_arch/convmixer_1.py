@@ -299,11 +299,12 @@ class UpdateBayesConvMixer(ConvMixer):
         for layer in self.layers:
             x = layer(x)
             logits = self.digup(x) 
-            log_prior = log_bayesian_iteration(log_prior, logits)
-            log_prior_posterior = log_prior + logits
-            log_norm = math.log(self.cfg.num_classes) - torch.logsumexp(log_prior_posterior, dim=-1)
-            log_prior = logits + log_prior - log_norm
-        
+            log_prior = log_prior + logits
+            log_prior = F.log_softmax(log_prior, dim=-1)
+            log_prior = torch.exp(log_prior)
+            log_prior = log_prior / log_prior.sum(dim=1, keepdim=True)
+            log_prior = torch.log(log_prior)
+            
         return log_prior
 
     def _step(self, batch, mode="train"):  # or "val"
