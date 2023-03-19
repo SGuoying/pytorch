@@ -302,9 +302,9 @@ class UpdateBayesConvMixer(ConvMixer):
             log_prior = log_bayesian_iteration(log_prior, logits)
             log_prior_posterior = log_prior + logits
             log_norm = math.log(self.cfg.num_classes) - torch.logsumexp(log_prior_posterior, dim=-1)
-            log_posterior = logits + log_prior - log_norm
+            log_prior = logits + log_prior - log_norm
         
-        return log_posterior
+        return log_prior
 
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
