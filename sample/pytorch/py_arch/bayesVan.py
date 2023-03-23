@@ -13,17 +13,25 @@ from dataclasses import dataclass
 from typing import List, Callable, Optional
 
 
+"""
+embed_dims=[32, 64, 160, 256], mlp_ratios=[8, 8, 4, 4],
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 3, 5, 2]
+"""
+
+
 @dataclass
 class VanCfg:
     image_size: int = 224
     in_chans: int = 3
     num_classes: int = 1000
-    embed_dims = [64, 128, 256, 512]
-    mlp_ratio = [4, 4, 4, 4]
+    # embed_dims = [64, 128, 256, 512]
+    embed_dims = [32, 64, 160, 256]
+    mlp_ratio = [8, 8, 4, 4]
     drop_rate: float = 0.
     drop_path_rate: float = 0.
-    norm_layer: Optional[Callable[..., nn.Module]] = nn.LayerNorm
-    depths = [3, 4, 6, 3]
+    # norm_layer: Optional[Callable[..., nn.Module]] = nn.LayerNorm
+    norm_layer=partial(nn.LayerNorm, eps=1e-6)
+    depths = [3, 3, 5, 2]
     num_stages: int = 4
     flag: bool = False
     batch_size: int = 128
@@ -385,7 +393,9 @@ class bayes_Van(Van):
         log_prior = torch.zeros(1, cfg.num_classes)
         self.register_buffer('log_prior', log_prior)
         #         self.logits_bias = nn.Parameter(torch.zeros(1, num_classes))
-        embed_dim = [128, 256, 512, cfg.num_classes]
+        # embed_dim = [128, 256, 512, cfg.num_classes]
+        embed_dim=[ 64, 160, 256, cfg.num_classes]
+        #embed_dims=[32, 64, 160, 256]
         self.embed = embed_dim
         for i in range(cfg.num_stages):
             logits_layer_norm = nn.LayerNorm(self.embed[i])
@@ -500,7 +510,8 @@ class bayes_Van2(Van):
             head3,
             self.head
         ])
-        embed_dim = [128, 256, 512, cfg.num_classes]
+        embed_dim=[ 64, 160, 256, cfg.num_classes]
+        # embed_dim = [128, 256, 512, cfg.num_classes]
         self.embed = embed_dim
         for i in range(cfg.num_stages):
             log_prior = torch.zeros(1, self.embed[i])
