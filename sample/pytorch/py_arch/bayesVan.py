@@ -424,7 +424,7 @@ class bayes_Van(Van):
                 logits = x.flatten(2).transpose(1, 2)
                 logits = logits.mean(dim=1)
                 logits = self.heads[i](logits)
-                log_prior = logits_layer_norm(logits)
+                log_prior = logits_layer_norm(log_prior)
                 log_prior = log_prior + logits
 
             # x = x.flatten(2).transpose(1, 2)
