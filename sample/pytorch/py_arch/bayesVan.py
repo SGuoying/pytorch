@@ -366,7 +366,7 @@ class Van(pl.LightningModule):
         #     return [optimizer], [lr_scheduler]
 
 
-class bayes_van(Van):
+class bayes_Van(Van):
     def __init__(self, cfg: VanCfg):
         super().__init__(cfg)
 
@@ -473,7 +473,7 @@ class bayes_van(Van):
             return [optimizer], [lr_scheduler]
 
 
-class bayes_van2(Van):
+class bayes_Van2(Van):
     def __init__(self, cfg: VanCfg
                  # image_size=224,
                  # in_chans=3,
