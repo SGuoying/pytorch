@@ -26,7 +26,7 @@ class VanCfg:
     depths = [3, 4, 6, 3]
     num_stages: int = 4
     flag: bool = False
-    batch_size = 128
+    batch_size: int = 128
 
     num_epochs: int = 10
     learning_rate: float = 1e-3
