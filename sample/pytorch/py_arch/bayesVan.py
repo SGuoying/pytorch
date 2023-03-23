@@ -18,8 +18,8 @@ class VanCfg:
     image_size: int = 224
     in_chans: int = 3
     num_classes: int = 1000
-    embed_dims: List[int] = [64, 128, 256, 512]
-    mlp_ratio: List[int] = [4, 4, 4, 4]
+    embed_dims = [64, 128, 256, 512]
+    mlp_ratio = [4, 4, 4, 4]
     drop_rate: float = 0.
     drop_path_rate: float = 0.
     norm_layer: Optional[Callable[..., nn.Module]] = nn.LayerNorm
