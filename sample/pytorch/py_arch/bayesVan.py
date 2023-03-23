@@ -442,7 +442,8 @@ class bayes_Van(Van):
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
         log_posterior = self.forward(input)
-        loss = F.nll_loss(log_posterior, target)
+        # loss = F.nll_loss(log_posterior, target)
+        loss = F.cross_entropy(log_posterior, target)
         self.log(mode + "_loss", loss)
         accuracy = (log_posterior.argmax(dim=-1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy)
@@ -562,7 +563,8 @@ class bayes_Van2(Van):
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
         log_posterior = self.forward(input)
-        loss = F.nll_loss(log_posterior, target)
+        # loss = F.nll_loss(log_posterior, target)
+        loss = F.cross_entropy(log_posterior, target)
         self.log(mode + "_loss", loss)
         accuracy = (log_posterior.argmax(dim=-1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy)
