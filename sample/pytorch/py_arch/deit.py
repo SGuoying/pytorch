@@ -270,3 +270,27 @@ class bayes_vit_models(vit_models):
             # log_prior = F.log_softmax(log_prior, dim=-1)
         
         return log_prior
+    def forward(self, x):
+        B = x.shape[0]
+        x = self.patch_embed(x)
+
+        cls_tokens = self.cls_token.expand(B, -1, -1)
+
+        x = x + self.pos_embed
+
+        x = torch.cat((cls_tokens, x), dim=1)
+
+        for i, blk in enumerate(self.blocks):
+            x = blk(x)
+
+        x = self.norm(x)
+
+        x = x[:, 0]
+
+        if self.dropout_rate:
+            x = F.dropout(x, p=float(self.dropout_rate), training=self.training)
+
+        x = self.head(x)
+
+        return x
+    
