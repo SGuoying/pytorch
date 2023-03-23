@@ -23,7 +23,7 @@ class VanCfg:
     drop_rate: float = 0.
     drop_path_rate: float = 0.
     norm_layer: Optional[Callable[..., nn.Module]] = nn.LayerNorm
-    depths: List[int] = [3, 4, 6, 3]
+    depths = [3, 4, 6, 3]
     num_stages: int = 4
     flag: bool = False
 
