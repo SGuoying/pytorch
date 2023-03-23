@@ -26,6 +26,7 @@ class VanCfg:
     depths = [3, 4, 6, 3]
     num_stages: int = 4
     flag: bool = False
+    batch_size = 128
 
     num_epochs: int = 10
     learning_rate: float = 1e-3
@@ -329,7 +330,7 @@ class Van(pl.LightningModule):
         if self.cfg.optimizer_method == "Adam":
             optimizer = torch.optim.Adam(self.parameters(), lr=self.cfg.learning_rate)
         elif self.cfg.optimizer_method == "AdamW":
-            optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.learning_rate,
+            optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.learning_rate, 
                                           weight_decay=self.cfg.weight_decay)
         else:
             raise Exception("Only support Adam and AdamW optimizer till now.")
