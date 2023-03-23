@@ -400,8 +400,8 @@ class bayes_Van(Van):
         self.embed = embed_dim
         for i in range(cfg.num_stages):
             logits_layer_norm = nn.LayerNorm(self.embed[i])
-            # log_prior = torch.zeros(1, self.embed[i])
-            # setattr(self, f"log_prior{i + 1}", log_prior)
+            log_prior = torch.zeros(1, self.embed[i])
+            setattr(self, f"log_prior{i + 1}", log_prior)
             setattr(self, f"logits_layer_norm{i + 1}", logits_layer_norm)
         # embed_dims=[128, 256, 512, num_classes]
         # self.logits_layer_norm = nn.LayerNorm(num_classes)
@@ -414,6 +414,7 @@ class bayes_Van(Van):
         # log_prior = repeat(self.log_prior, '1 n -> b n ', b=B)
 
         for i in range(self.num_stages):
+            log_prior1 = getattr(self, f"log_prior{i + 1}")
             patch_embed = getattr(self, f"patch_embed{i + 1}")
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
@@ -424,6 +425,7 @@ class bayes_Van(Van):
                 logits = x.flatten(2).transpose(1, 2)
                 logits = logits.mean(dim=1)
                 logits = self.heads[i](logits)
+                log_prior = logits + log_prior1
                 log_prior = logits_layer_norm(log_prior)
                 log_prior = log_prior + logits
 
