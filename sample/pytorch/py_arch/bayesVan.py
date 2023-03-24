@@ -391,8 +391,8 @@ class bayes_Van(Van):
             self.head
         ])
 
-        log_prior = torch.zeros(1, cfg.num_classes)
-        self.register_buffer('log_prior', log_prior)
+        # log_prior = torch.zeros(1, cfg.num_classes)
+        # self.register_buffer('log_prior', log_prior)
         #         self.logits_bias = nn.Parameter(torch.zeros(1, num_classes))
         # embed_dim = [128, 256, 512, cfg.num_classes]
         embed_dim=[ 64, 160, 256, cfg.num_classes]
@@ -412,9 +412,10 @@ class bayes_Van(Van):
     def forward_features(self, x):
         B = x.shape[0]
         # log_prior = repeat(self.log_prior, '1 n -> b n ', b=B)
+        log = []
 
         for i in range(self.num_stages):
-            log_prior1 = getattr(self, f"log_prior{i + 1}")
+            # log_prior = getattr(self, f"log_prior{i + 1}")
             patch_embed = getattr(self, f"patch_embed{i + 1}")
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
@@ -425,19 +426,10 @@ class bayes_Van(Van):
                 logits = x.flatten(2).transpose(1, 2)
                 logits = logits.mean(dim=1)
                 logits = self.heads[i](logits)
-                log_prior = logits + log_prior1
-                log_prior = logits_layer_norm(logits)
+                # log_prior = logits + log_prior1
+                log_prior = logits_layer_norm(log_prior)
                 log_prior = log_prior + logits
-
-            # x = x.flatten(2).transpose(1, 2)
-            # x = norm(x)
-            # if i != self.num_stages - 1:
-            #     x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
-            # logits = x.mean(dim=1)
-            # logits = self.head(logits)
-
-        # x = x.mean(dim=1)
-        # x = self.head(x)
+            
 
         return log_prior
 
@@ -551,6 +543,141 @@ class bayes_Van2(Van):
                 log_prior = logits + log_prior1
                 log_prior = F.log_softmax(log_prior, dim=-1)
                 log_prior = log_prior + math.log(self.embed[i])
+
+        #     x = x.flatten(2).transpose(1, 2)
+        #     x = norm(x)
+        #     if i != self.num_stages - 1:
+        #         x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+        #
+        # x = x.mean(dim=1)
+        # x = self.head(x)
+
+        return log_prior
+
+    def _step(self, batch, mode="train"):  # or "val"
+        input, target = batch
+        log_posterior = self.forward(input)
+        # loss = F.nll_loss(log_posterior, target)
+        loss = F.cross_entropy(log_posterior, target)
+        self.log(mode + "_loss", loss)
+        accuracy = (log_posterior.argmax(dim=-1) == target).float().mean()
+        self.log(mode + "_accuracy", accuracy)
+        return loss
+
+    def training_step(self, batch, batch_idx):
+        return self._step(batch, mode="train")
+
+    def validation_step(self, batch, batch_idx):
+        return self._step(batch, mode="val")
+
+    def configure_optimizers(self):
+        if self.cfg.optimizer_method == "Adam":
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.cfg.learning_rate)
+        elif self.cfg.optimizer_method == "AdamW":
+            optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.learning_rate,
+                                          weight_decay=self.cfg.weight_decay)
+        else:
+            raise Exception("Only support Adam and AdamW optimizer till now.")
+
+        if self.cfg.learning_rate_scheduler == "CosineAnnealing":
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, self.cfg.num_epochs,
+                                                                      last_epoch=self.cfg.last_epoch)
+        elif self.cfg.learning_rate_scheduler == "OneCycleLR":
+            lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.cfg.learning_rate,
+                                                               steps_per_epoch=self.cfg.steps_per_epoch,
+                                                               epochs=self.cfg.num_epochs,
+                                                               last_epoch=self.cfg.last_epoch)
+        elif self.cfg.learning_rate_scheduler == "LinearWarmupCosineAnnealingLR":
+            from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
+            lr_scheduler = LinearWarmupCosineAnnealingLR(
+                optimizer, warmup_epochs=self.cfg.warmup_epochs, max_epochs=self.cfg.num_epochs,
+                warmup_start_lr=self.cfg.warmup_start_lr, last_epoch=self.cfg.last_epoch)
+        else:
+            lr_scheduler = None
+
+        if lr_scheduler is None:
+            return optimizer
+        else:
+            return [optimizer], [lr_scheduler]
+
+
+class bayes_Van3(Van):
+    def __init__(self, cfg: VanCfg
+                 # image_size=224,
+                 # in_chans=3,
+                 # num_classes=1000,
+                 # embed_dims=[64, 128, 256, 512],
+                 # mlp_ratio=[4, 4, 4, 4],
+                 # drop_rate=0,
+                 # drop_path_rate=0,
+                 # norm_layer=nn.LayerNorm,
+                 # depths=[3, 4, 6, 3],
+                 # num_stages=4,
+                 # flag=False
+                 ):
+        super().__init__(cfg)
+
+        # embed_dims=[64, 128, 256, 512],
+        head1 = nn.Linear(cfg.embed_dims[0], cfg.embed_dims[1]) if cfg.num_classes > 0 else nn.Identity()
+        head2 = nn.Linear(cfg.embed_dims[1], cfg.embed_dims[2]) if cfg.num_classes > 0 else nn.Identity()
+        head3 = nn.Linear(cfg.embed_dims[2], cfg.embed_dims[3]) if cfg.num_classes > 0 else nn.Identity()
+        self.heads = nn.ModuleList([
+            head1,
+            head2,
+            head3,
+            self.head
+        ])
+        embed_dim=[ 64, 160, 256, cfg.num_classes]
+        # embed_dim = [128, 256, 512, cfg.num_classes]
+        self.embed = embed_dim
+        log_prior = torch.zeros(1, self.embed[0])
+        self.register_buffer('log_prior', log_prior)
+        for i in range(cfg.num_stages):
+            logits_layer_norm = nn.LayerNorm(self.embed[i])
+            setattr(self, f"logits_layer_norm{i + 1}", logits_layer_norm)
+            # log_prior = torch.zeros(1, self.embed[i])
+            # setattr(self, f"log_prior{i + 1}", log_prior)
+
+        # log_prior = torch.zeros(1, num_classes)
+        # self.register_buffer('log_prior', log_prior)
+        #         self.logits_bias = nn.Parameter(torch.zeros(1, num_classes))
+
+        # self.logits_layer_norm = nn.LayerNorm(num_classes)
+        # self.norm = None
+        self.cfg = cfg
+        self.apply(self._init_weights)
+
+    def forward_features(self, x):
+        B = x.shape[0]
+        log_prior = repeat(self.log_prior, '1 n -> b n ', b=B)
+
+        for i in range(self.num_stages):
+            # log_prior = getattr(self, f"log_prior{i + 1}")
+            patch_embed = getattr(self, f"patch_embed{i + 1}")
+            block = getattr(self, f"block{i + 1}")
+            norm = getattr(self, f"norm{i + 1}")
+            logits_layer_norm = getattr(self, f"logits_layer_norm{i + 1}")
+            x, H, W = patch_embed(x)
+            for blk in block:
+                x = blk(x)
+                logits = x.flatten(2).transpose(1, 2)
+                logits = logits.mean(dim=1)
+                logits = self.heads[i](logits)
+                # log_prior = logits_layer_norm(log_prior)
+                if i == 0:
+                    log_prior = log_prior + logits
+                    log_prior = logits_layer_norm(log_prior)
+                else:
+                    if logits.shape != log_prior.shape:
+                        logits[:, :self.embed[i-1]] += log_prior
+                        log_prior = logits
+                        log_prior = logits_layer_norm(log_prior)
+                    else:
+                        log_prior = logits
+                        log_prior = logits_layer_norm(log_prior)
+                log_pro = log_prior
+            # if i != self.num_stages - 1:
+            log_prior = log_pro
 
         #     x = x.flatten(2).transpose(1, 2)
         #     x = norm(x)
