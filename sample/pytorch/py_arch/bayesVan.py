@@ -25,7 +25,7 @@ class VanCfg:
     in_chans: int = 3
     num_classes: int = 1000
     # embed_dims = [64, 128, 256, 512]
-    embed_dims = [32, 64, 160, 256]
+    embed_dims =[16, 32, 64, 128]  # [32, 64, 160, 256]
     mlp_ratio = [8, 8, 4, 4]
     drop_rate: float = 0.
     drop_path_rate: float = 0.
@@ -395,7 +395,7 @@ class bayes_Van(Van):
         # self.register_buffer('log_prior', log_prior)
         #         self.logits_bias = nn.Parameter(torch.zeros(1, num_classes))
         # embed_dim = [128, 256, 512, cfg.num_classes]
-        embed_dim=[ 64, 160, 256, cfg.num_classes]
+        embed_dim=[32, 64, 128, cfg.num_classes]  #[ 64, 160, 256, cfg.num_classes]
         #embed_dims=[32, 64, 160, 256]
         self.embed = embed_dim
         for i in range(cfg.num_stages):
@@ -506,7 +506,8 @@ class bayes_Van2(Van):
             head3,
             self.head
         ])
-        embed_dim=[ 64, 160, 256, cfg.num_classes]
+        # embed_dim=[ 64, 160, 256, cfg.num_classes]
+        embed_dim=[32, 64, 128, cfg.num_classes]
         # embed_dim = [128, 256, 512, cfg.num_classes]
         self.embed = embed_dim
         for i in range(cfg.num_stages):
@@ -627,7 +628,8 @@ class bayes_Van3(Van):
             head3,
             self.head
         ])
-        embed_dim=[ 64, 160, 256, cfg.num_classes]
+        # embed_dim=[ 64, 160, 256, cfg.num_classes]
+        embed_dim=[32, 64, 128, cfg.num_classes]
         # embed_dim = [128, 256, 512, cfg.num_classes]
         self.embed = embed_dim
         log_prior = torch.zeros(1, self.embed[0])
