@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 
 class TinyImageNet(VisionDataset):
-    dataset_name = 'CLS-L'
+    dataset_name = 'ILSVRC'
     txt_file = 'imagenet-object-localization-challenge'
     raw_file_name = f'{dataset_name}.zip'
     download_url = 'https://image-net.org/challenges/LSVRC/2012/2012-downloads.php'
@@ -65,6 +65,41 @@ class TinyImageNet(VisionDataset):
 
     def __len__(self):
         return len(self.data)
+
+
+class SelectedImagenet(VisionDataset):
+    dataset_name = 'imagenet-object-localization-challenge'
+    def __init__(self, root='', split='', transform = None, ):
+        super(SelectedImagenet).__init__(root, transform=transform)
+        self.root = root
+        self.split = split
+        self.transform = transform
+
+        image_to_class_file_path = os.path.join(self.dataset_name, f'LOC_{self.split}_solution.csv')
+        if os.path.exists(image_to_class_file_path):
+            self.data = read_from_csv(image_to_class_file_path)
+        else:
+            classes_file_path = os.path.join(self.dataset_name, 'LOC_synset_mapping.txt')
+            _, class_to_idx = find_classes(classes_file_path)
+
+            self.data = make_dataset(self.dataset_name, self.split, class_to_idx)
+            try:
+                write_to_csv(image_to_class_file_path, self.data)
+            except Exception:
+                print('can not write to csv file.')
+
+    def __getitem__(self, index: int):
+        image_path, target = self.data[index]
+        image = self.loader(image_path)
+
+        if self.transform is not None:
+            image = self.transform(image)
+
+        return image, target
+
+    def __len__(self):
+        return len(self.data)
+	
 
 
 def find_classes(classes_file_path):
