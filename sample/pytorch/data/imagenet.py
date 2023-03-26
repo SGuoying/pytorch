@@ -114,8 +114,9 @@ def find_classes(classes_file_path):
 
 
 def make_dataset(dataset_path, split, class_to_idx):
+    train = 'ILSVRC/Data/CLS-LOC'
     images = []
-    splitted_dataset_path = os.path.join(dataset_path, split)
+    splitted_dataset_path = os.path.join(dataset_path,train, split)
 
     if split == 'train':
         for class_name in sorted(os.listdir(splitted_dataset_path)):
