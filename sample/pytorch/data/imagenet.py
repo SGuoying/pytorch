@@ -75,7 +75,8 @@ class SelectedImagenet(VisionDataset):
         self.split = split
         self.transform = transform
 
-        image_to_class_file_path = os.path.join(self.dataset_name, f'LOC_{self.split}_solution.csv')
+        # image_to_class_file_path = os.path.join(self.dataset_name, f'LOC_{self.split}_solution.csv')
+        image_to_class_file_path = os.path.join(self.dataset_name, f'{self.split}_data.csv')
         if os.path.exists(image_to_class_file_path):
             self.data = read_from_csv(image_to_class_file_path)
         else:
