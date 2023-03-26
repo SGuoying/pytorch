@@ -122,7 +122,7 @@ def make_dataset(dataset_path, split, class_to_idx):
         for class_name in sorted(os.listdir(splitted_dataset_path)):
             class_path = os.path.join(splitted_dataset_path, class_name)
             if os.path.isdir(class_path):
-                class_images_path = os.path.join(class_path, 'images')
+                class_images_path = os.path.join(class_path)
                 for image_name in sorted(os.listdir(class_images_path)):
                     image_path = os.path.join(class_images_path, image_name)
                     item = (image_path, class_to_idx[class_name])
