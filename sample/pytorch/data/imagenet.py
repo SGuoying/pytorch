@@ -16,14 +16,14 @@ class TinyImageNet(VisionDataset):
     download_url = 'https://image-net.org/challenges/LSVRC/2012/2012-downloads.php'
     md5 = '1d675b47d978889d74fa0da5fadfb00e'  #'29b22e2961454d5413ddabcf34fc5622'   #val 
 
-    def __init__(self, root='.data', split='LOC', transform=None, download=False):
+    def __init__(self, root='.data', split='LOC_', transform=None, download=False):
         super(TinyImageNet, self).__init__(root, transform=transform)
 
         self.root = os.path.abspath(root)
         self.dataset_path = os.path.join(self.root, self.dataset_name)
         self.txt_path = os.path.join(self.root, self.txt_file)
         self.loader = default_loader
-        self.split = verify_str_arg(split, '_', ('train_solution', 'val_solution'))
+        self.split = verify_str_arg(split, ('train_solution', 'val_solution'))
 
         raw_file_path = os.path.join(self.root, self.raw_file_name)
         if check_integrity(raw_file_path, self.md5) is True:
