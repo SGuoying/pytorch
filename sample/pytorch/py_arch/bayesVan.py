@@ -510,9 +510,11 @@ class bayes_Van2(Van):
         embed_dim=[32, 64, 128, cfg.num_classes]
         # embed_dim = [128, 256, 512, cfg.num_classes]
         self.embed = embed_dim
-        for i in range(cfg.num_stages):
-            log_prior = torch.zeros(1, self.embed[i])
-            setattr(self, f"log_prior{i + 1}", log_prior)
+        log_prior = torch.zeros(1, self.embed[0])
+        self.register_buffer('log_prior', log_prior)
+        # for i in range(cfg.num_stages):
+            # log_prior = torch.zeros(1, self.embed[i])
+            # setattr(self, f"log_prior{i + 1}", log_prior)
 
         # log_prior = torch.zeros(1, num_classes)
         # self.register_buffer('log_prior', log_prior)
@@ -525,11 +527,10 @@ class bayes_Van2(Van):
 
     def forward_features(self, x):
         B = x.shape[0]
+        log_prior = repeat(self.log_prior, '1 n -> b n ', b=B)
 
         for i in range(self.num_stages):
-            log_prior1 = getattr(self, f"log_prior{i + 1}")
             # log_prior = repeat(self.log_prior, '1 n -> b n ', b=B)
-            print(log_prior1.shape)
             patch_embed = getattr(self, f"patch_embed{i + 1}")
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
@@ -541,9 +542,23 @@ class bayes_Van2(Van):
                 logits = logits.mean(dim=1)
                 logits = self.heads[i](logits)
                 # log_prior = self.logits_layer_norm(logits)
-                log_prior = logits + log_prior1
-                log_prior = F.log_softmax(log_prior, dim=-1)
-                log_prior = log_prior + math.log(self.embed[i])
+                if i == 0:
+                    log_prior = logits + log_prior
+                    log_prior = F.log_softmax(log_prior, dim=-1)
+                    log_prior = log_prior + math.log(self.embed[i])
+                else:
+                    if logits.shape != log_prior.shape:
+                        logits[:, :self.embed[i-1]] += log_prior
+                        log_prior = logits
+                        log_prior = F.log_softmax(log_prior)
+                        log_prior = log_prior + math.log(self.embed[i])
+                    else:
+                        log_prior = logits + log_prior
+                        log_prior = F.log_softmax(log_prior)
+                        log_prior = log_prior + math.log(self.embed[i])
+                log_pro = log_prior
+            # if i != self.num_stages - 1:
+            log_prior = log_pro
 
         #     x = x.flatten(2).transpose(1, 2)
         #     x = norm(x)
