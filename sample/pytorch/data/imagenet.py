@@ -68,7 +68,7 @@ class TinyImageNet(VisionDataset):
 
 
 class SelectedImagenet(VisionDataset):
-    dataset_name = 'imagenet-object-localization-challenge'
+    dataset_name = '/kaggle/input/imagenet-object-localization-challenge'
     def __init__(self, root='', split='', transform = None, ):
         super(SelectedImagenet, self).__init__(root, transform=transform)
         self.root = root
