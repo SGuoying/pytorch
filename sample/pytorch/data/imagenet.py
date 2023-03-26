@@ -10,18 +10,20 @@ from torch.utils.data import DataLoader
 
 
 class TinyImageNet(VisionDataset):
-    dataset_name = 'imagenet'
+    dataset_name = 'imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC'
+    txt_file = 'imagenet-object-localization-challenge'
     raw_file_name = f'{dataset_name}.zip'
-    download_url = 'http://cs231n.standord.edu/imagenet.zip'
-    md5 = '90528d7ca1a48142e341f4ef8d21d0de'
+    download_url = 'https://image-net.org/challenges/LSVRC/2012/2012-downloads.php'
+    md5 = '1d675b47d978889d74fa0da5fadfb00e'  #'29b22e2961454d5413ddabcf34fc5622'   #val 
 
-    def __init__(self, root='.data', split='train', transform=None, download=False):
+    def __init__(self, root='.data', split='LOC', transform=None, download=False):
         super(TinyImageNet, self).__init__(root, transform=transform)
 
         self.root = os.path.abspath(root)
         self.dataset_path = os.path.join(self.root, self.dataset_name)
+        self.txt_path = os.path.join(self.root, self.txt_file)
         self.loader = default_loader
-        self.split = verify_str_arg(split, 'split', ('train', 'val'))
+        self.split = verify_str_arg(split, '_', ('train_solution', 'val_solution'))
 
         raw_file_path = os.path.join(self.root, self.raw_file_name)
         if check_integrity(raw_file_path, self.md5) is True:
@@ -39,11 +41,11 @@ class TinyImageNet(VisionDataset):
         else:
             raise RuntimeError('Dataset not found. You can use download=True to download it.')
 
-        image_to_class_file_path = os.path.join(self.dataset_path, f'{self.split}_data.csv')
+        image_to_class_file_path = os.path.join(self.txt_path, f'{self.split}.csv')
         if os.path.exists(image_to_class_file_path):
             self.data = read_from_csv(image_to_class_file_path)
         else:
-            classes_file_path = os.path.join(self.dataset_path, 'wnids.txt')
+            classes_file_path = os.path.join(self.txt_path, 'LOC_synset_mapping.txt')
             _, class_to_idx = find_classes(classes_file_path)
 
             self.data = make_dataset(self.dataset_path, self.split, class_to_idx)
