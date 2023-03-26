@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 
 class TinyImageNet(VisionDataset):
-    dataset_name = 'imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC'
+    dataset_name = 'CLS-L'
     txt_file = 'imagenet-object-localization-challenge'
     raw_file_name = f'{dataset_name}.zip'
     download_url = 'https://image-net.org/challenges/LSVRC/2012/2012-downloads.php'
