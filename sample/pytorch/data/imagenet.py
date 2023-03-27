@@ -154,7 +154,7 @@ class ImageNetDetection(VisionDataset):
         # target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
         
         if self.transform:
-            img, target = self.transform(img, target)
+            img, target = self.transform(img, targets)
         
         return img, target
 
