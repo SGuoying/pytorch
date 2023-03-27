@@ -144,12 +144,11 @@ class ImageNetDetection(VisionDataset):
             boxes.append([xmin, ymin, xmax, ymax])
             labels.append(label)
 
-        labels = np.array(labels)
-
         target = {}
+        labels = [int(label) for label in labels]
         target["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
-        target["labels"] = torch.as_tensor(labels, dtype=torch.float64)
-        # target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
+        # target["labels"] = torch.as_tensor(labels, dtype=torch.float64)
+        target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
         
         if self.transform:
             img, target = self.transform(img, target)
