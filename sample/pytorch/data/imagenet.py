@@ -18,29 +18,6 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 
-# 读取 LOC_synset_mapping.txt 文件，获取标签映射信息
-synset_to_label = {}
-with open('/kaggle/input/imagenet-object-localization-challenge/LOC_synset_mapping.txt', 'r') as f:
-    for line in f:
-        line = line.strip().split(' ')
-        synset_to_label[line[0]] = int(line[1])
-
-# 构建标签和图像路径的对应关系
-train_label_to_paths = defaultdict(list)
-train_dir = '/kaggle/input/imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC/train/'
-for path in glob.glob(train_dir + '/*/*.JPEG'):
-    synset = path.split('/')[-2]
-    label = synset_to_label[synset]
-    train_label_to_paths[label].append(path)
-
-val_label_to_paths = defaultdict(list)
-val_dir = '/kaggle/input/imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC/val/'
-for path in glob.glob(val_dir + '/*/*.JPEG'):
-    synset = path.split('/')[-2]
-    label = synset_to_label[synset]
-    val_label_to_paths[label].append(path)
-
-
 class ImageNetDataset(data.Dataset):
     def __init__(self, label_to_paths, transform=None):
         self.label_to_paths = label_to_paths
@@ -172,10 +149,20 @@ def read_from_csv(file: str):
 
 from torch.utils.data.dataloader import default_collate
 class TinyImageNetDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size:int, root: str, num_workers: int=2, pin_memory: bool=True, persistent_workers: bool=True, train_transforms=None, val_transforms=None):
+    # def __init__(self, batch_size:int, root: str, num_workers: int=2, pin_memory: bool=True, persistent_workers: bool=True, train_transforms=None, val_transforms=None):
+    #     super().__init__()
+    #     self.batch_size = batch_size
+    #     self.root = root
+    #     self.num_workers = num_workers
+    #     self.pin_memory = pin_memory
+    #     self.persistent_workers = persistent_workers
+    #     self.train_transforms, self.val_transforms = train_transforms, val_transforms
+    #     self.setup()
+    def __init__(self, batch_size:int, train_label, val_label, num_workers: int=2, pin_memory: bool=True, persistent_workers: bool=True, train_transforms=None, val_transforms=None):
         super().__init__()
         self.batch_size = batch_size
-        self.root = root
+        self.train_label_to_paths=train_label
+        self.val_label_to_paths=val_label
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.persistent_workers = persistent_workers
@@ -187,8 +174,8 @@ class TinyImageNetDataModule(pl.LightningDataModule):
         # self.val_data = TinyImageNet(root=self.root, split='val', transform=self.val_transforms)
         # self.train_data = ImageNetDetection(root=self.root, split='train', transform=self.train_transforms)
         # self.val_data = ImageNetDetection(root=self.root, split='val', transform=self.val_transforms)
-        self.train_data = ImageNetDataset(train_label_to_paths, transform=self.train_transforms)
-        self.val_data = ImageNetDataset(val_label_to_paths, transform=self.val_transforms)
+        self.train_data = ImageNetDataset(self.train_label_to_paths, transform=self.train_transforms)
+        self.val_data = ImageNetDataset(self.val_label_to_paths, transform=self.val_transforms)
 
     def train_dataloader(self):
         return DataLoader(
