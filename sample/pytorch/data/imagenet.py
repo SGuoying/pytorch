@@ -218,8 +218,10 @@ class TinyImageNetDataModule(pl.LightningDataModule):
         self.setup()
 
     def setup(self, stage=None):
-        self.train_data = TinyImageNet(root=self.root, split='LOC_', transform=self.train_transforms)
-        self.val_data = TinyImageNet(root=self.root, split='LOC_', transform=self.val_transforms)
+        # self.train_data = TinyImageNet(root=self.root, split='train', transform=self.train_transforms)
+        # self.val_data = TinyImageNet(root=self.root, split='val', transform=self.val_transforms)
+        self.train_data = ImageNetDetection(root=self.root, split='train', transform=self.train_transforms)
+        self.val_data = ImageNetDetection(root=self.root, split='val', transform=self.val_transforms)
 
     def train_dataloader(self):
         return DataLoader(
