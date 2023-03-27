@@ -133,6 +133,7 @@ class ImageNetDetection(VisionDataset):
 
         boxes = []
         labels = []
+        targets = []
 
         for obj in root.findall("object"):
             label = obj.find("name").text
@@ -141,14 +142,16 @@ class ImageNetDetection(VisionDataset):
             ymin = float(bbox.find("ymin").text)
             xmax = float(bbox.find("xmax").text)
             ymax = float(bbox.find("ymax").text)
-            boxes.append([xmin, ymin, xmax, ymax])
-            labels.append(label)
+            # boxes.append([xmin, ymin, xmax, ymax])
+            # labels.append(label)
+            targets.append({
+                "labels": label,
+                 "boxes": [xmin, ymin, xmax, ymax]
+    })
 
-        target = {}
-        labels = [int(label) for label in labels]
-        target["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
-        # target["labels"] = torch.as_tensor(labels, dtype=torch.float64)
-        target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
+        # target = {}
+        # target["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
+        # target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
         
         if self.transform:
             img, target = self.transform(img, target)
