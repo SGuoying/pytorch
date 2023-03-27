@@ -1,6 +1,11 @@
 # modified from https://github.com/lvyilin/pytorch-fgvc-dataset/blob/master/tiny_imagenet.py
 
 import os, csv
+from PIL import Image
+from xml.etree import ElementTree as ET
+
+import torch
+from torch.utils.data import Dataset
 
 from torchvision.datasets import VisionDataset
 from torchvision.datasets.folder import default_loader
@@ -67,7 +72,7 @@ class TinyImageNet(VisionDataset):
         return len(self.data)
 
 
-class SelectedImagenet(VisionDataset):
+
     dataset_name = '/kaggle/input/imagenet-object-localization-challenge'
     def __init__(self, root='', split='', transform = None, ):
         super(SelectedImagenet, self).__init__(root, transform=transform)
@@ -102,6 +107,50 @@ class SelectedImagenet(VisionDataset):
         return len(self.data)
 	
 
+class ImageNetDetection(VisionDataset):
+    def __init__(self, root, split='train', transform = None):
+        super(ImageNetDetection, self).__init__(root, transform=transform)
+        self.root = root
+        self.split = split
+        self.transform = transform
+        self.image_names = os.listdir(os.path.join(self.root, 'Data', 'CLS-LOC', self.split))
+
+    def __len__(self):
+        return len(self.image_names)
+    
+    def __getitem__(self, idx):
+        img_name = self.image_names[idx]
+        img_path = os.path.join(self.root, 'Data', 'CLS-LOC', self.split, img_name)
+
+        # Load image
+        img = Image.open(img_path).convert("RGB")
+
+        # Load annotation
+        annotation_path = os.path.join(self.root, 'Annotations', 'CLS-LOC', self.split, img_name.replace(".JPEG", ".xml"))
+        tree = ET.parse(annotation_path)
+        root = tree.getroot()
+
+        boxes = []
+        labels = []
+
+        for obj in root.findall("object"):
+            label = obj.find("name").text
+            bbox = obj.find("bndbox")
+            xmin = float(bbox.find("xmin").text)
+            ymin = float(bbox.find("ymin").text)
+            xmax = float(bbox.find("xmax").text)
+            ymax = float(bbox.find("ymax").text)
+            boxes.append([xmin, ymin, xmax, ymax])
+            labels.append(label)
+
+        target = {}
+        target["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
+        target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
+        
+        if self.transform:
+            img, target = self.transform(img, target)
+        
+        return img, target
 
 def find_classes(classes_file_path):
     with open(classes_file_path) as f:
@@ -116,7 +165,7 @@ def find_classes(classes_file_path):
 def make_dataset(dataset_path, split, class_to_idx):
     train = 'ILSVRC/Data/CLS-LOC'
     images = []
-    splitted_dataset_path = os.path.join(dataset_path,train, split)
+    splitted_dataset_path = os.path.join(dataset_path, train, split)
 
     if split == 'train':
         for class_name in sorted(os.listdir(splitted_dataset_path)):
