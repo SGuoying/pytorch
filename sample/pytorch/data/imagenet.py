@@ -213,6 +213,7 @@ def read_from_csv(file: str):
     return data
 
 
+from torch.utils.data.dataloader import default_collate
 class TinyImageNetDataModule(pl.LightningDataModule):
     def __init__(self, batch_size:int, root: str, num_workers: int=2, pin_memory: bool=True, persistent_workers: bool=True, train_transforms=None, val_transforms=None):
         super().__init__()
@@ -237,7 +238,8 @@ class TinyImageNetDataModule(pl.LightningDataModule):
             shuffle=True,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            persistent_workers=self.persistent_workers
+            persistent_workers=self.persistent_workers,
+            collate_fn=default_collate
         )
 
     def val_dataloader(self):
@@ -247,5 +249,6 @@ class TinyImageNetDataModule(pl.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            persistent_workers=self.persistent_workers
+            persistent_workers=self.persistent_workers,
+            collate_fn=default_collate
         )
