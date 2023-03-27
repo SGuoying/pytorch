@@ -1,11 +1,14 @@
 # modified from https://github.com/lvyilin/pytorch-fgvc-dataset/blob/master/tiny_imagenet.py
+import glob
+from collections import defaultdict
+import torchvision.transforms as transforms
 
 import os, csv
 from PIL import Image
 from xml.etree import ElementTree as ET
 import numpy as np
 
-import torch
+from torch.utils import data
 from torch.utils.data import Dataset
 
 from torchvision.datasets import VisionDataset
@@ -15,98 +18,52 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 
-class TinyImageNet(VisionDataset):
-    dataset_name = 'ILSVRC'
-    txt_file = 'imagenet-object-localization-challenge'
-    raw_file_name = f'{dataset_name}.zip'
-    download_url = 'https://image-net.org/challenges/LSVRC/2012/2012-downloads.php'
-    md5 = '1d675b47d978889d74fa0da5fadfb00e'  #'29b22e2961454d5413ddabcf34fc5622'   #val 
+# 读取 LOC_synset_mapping.txt 文件，获取标签映射信息
+synset_to_label = {}
+with open('/kaggle/input/imagenet-object-localization-challenge/LOC_synset_mapping.txt', 'r') as f:
+    for line in f:
+        line = line.strip().split(' ')
+        synset_to_label[line[0]] = int(line[1])
 
-    def __init__(self, root='.data', split='LOC_', transform=None, download=False):
-        super(TinyImageNet, self).__init__(root, transform=transform)
+# 构建标签和图像路径的对应关系
+train_label_to_paths = defaultdict(list)
+train_dir = '/kaggle/input/imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC/train/'
+for path in glob.glob(train_dir + '/*/*.JPEG'):
+    synset = path.split('/')[-2]
+    label = synset_to_label[synset]
+    train_label_to_paths[label].append(path)
 
-        self.root = os.path.abspath(root)
-        self.dataset_path = os.path.join(self.root, self.dataset_name)
-        self.txt_path = os.path.join(self.root, self.txt_file)
-        self.loader = default_loader
-        self.split = verify_str_arg(split, ('train_solution', 'val_solution'))
-
-        raw_file_path = os.path.join(self.root, self.raw_file_name)
-        if check_integrity(raw_file_path, self.md5) is True:
-            print(f'{self.raw_file_name}already downloaded and verified.')
-            if not os.path.exists(self.dataset_path):
-                print('Extracting...')
-                extract_archive(raw_file_path)
-        elif os.path.exists(self.dataset_path):
-            pass
-        elif download is True:
-            print('Downloading...')
-            download_url(self.download_url, root=self.root, filename=self.raw_file_name)
-            print('Extracting...')
-            extract_archive(raw_file_path)
-        else:
-            raise RuntimeError('Dataset not found. You can use download=True to download it.')
-
-        image_to_class_file_path = os.path.join(self.txt_path, f'{self.split}.csv')
-        if os.path.exists(image_to_class_file_path):
-            self.data = read_from_csv(image_to_class_file_path)
-        else:
-            classes_file_path = os.path.join(self.txt_path, 'LOC_synset_mapping.txt')
-            _, class_to_idx = find_classes(classes_file_path)
-
-            self.data = make_dataset(self.dataset_path, self.split, class_to_idx)
-            try:
-                write_to_csv(image_to_class_file_path, self.data)
-            except Exception:
-                print('can not write to csv file.')
-
-    def __getitem__(self, index: int):
-        image_path, target = self.data[index]
-        image = self.loader(image_path)
-
-        if self.transform is not None:
-            image = self.transform(image)
-
-        return image, target
-
-    def __len__(self):
-        return len(self.data)
+val_label_to_paths = defaultdict(list)
+val_dir = '/kaggle/input/imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC/val/'
+for path in glob.glob(val_dir + '/*/*.JPEG'):
+    synset = path.split('/')[-2]
+    label = synset_to_label[synset]
+    val_label_to_paths[label].append(path)
 
 
-
-    dataset_name = '/kaggle/input/imagenet-object-localization-challenge'
-    def __init__(self, root='', split='', transform = None, ):
-        super(SelectedImagenet, self).__init__(root, transform=transform)
-        self.root = root
-        self.split = split
+class ImageNetDataset(data.Dataset):
+    def __init__(self, label_to_paths, transform=None):
+        self.label_to_paths = label_to_paths
         self.transform = transform
+        self.images = []
+        self.labels = []
+        for label, paths in label_to_paths.items():
+            for path in paths:
+                self.images.append(path)
+                self.labels.append(label)
 
-        # image_to_class_file_path = os.path.join(self.dataset_name, f'LOC_{self.split}_solution.csv')
-        image_to_class_file_path = os.path.join(self.dataset_name, f'{self.split}_data.csv')
-        if os.path.exists(image_to_class_file_path):
-            self.data = read_from_csv(image_to_class_file_path)
-        else:
-            classes_file_path = os.path.join(self.dataset_name, 'LOC_synset_mapping.txt')
-            _, class_to_idx = find_classes(classes_file_path)
-
-            self.data = make_dataset(self.dataset_name, self.split, class_to_idx)
-            try:
-                write_to_csv(image_to_class_file_path, self.data)
-            except Exception:
-                print('can not write to csv file.')
-
-    def __getitem__(self, index: int):
-        image_path, target = self.data[index]
-        image = self.loader(image_path)
-
+    def __getitem__(self, index):
+        path = self.images[index]
+        label = self.labels[index]
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            img = img.convert('RGB')
         if self.transform is not None:
-            image = self.transform(image)
-
-        return image, target
+            img = self.transform(img)
+        return img, label
 
     def __len__(self):
-        return len(self.data)
-	
+        return len(self.images)
 
 class ImageNetDetection(VisionDataset):
     def __init__(self, root, split='train', transform = None):
@@ -228,8 +185,10 @@ class TinyImageNetDataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         # self.train_data = TinyImageNet(root=self.root, split='train', transform=self.train_transforms)
         # self.val_data = TinyImageNet(root=self.root, split='val', transform=self.val_transforms)
-        self.train_data = ImageNetDetection(root=self.root, split='train', transform=self.train_transforms)
-        self.val_data = ImageNetDetection(root=self.root, split='val', transform=self.val_transforms)
+        # self.train_data = ImageNetDetection(root=self.root, split='train', transform=self.train_transforms)
+        # self.val_data = ImageNetDetection(root=self.root, split='val', transform=self.val_transforms)
+        self.train_data = ImageNetDataset(train_label_to_paths, transform=self.train_transforms)
+        self.val_data = ImageNetDataset(val_label_to_paths, transform=self.val_transforms)
 
     def train_dataloader(self):
         return DataLoader(
