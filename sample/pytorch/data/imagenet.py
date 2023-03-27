@@ -3,6 +3,7 @@
 import os, csv
 from PIL import Image
 from xml.etree import ElementTree as ET
+import numpy as np
 
 import torch
 from torch.utils.data import Dataset
@@ -143,9 +144,12 @@ class ImageNetDetection(VisionDataset):
             boxes.append([xmin, ymin, xmax, ymax])
             labels.append(label)
 
+        labels = np.array(labels)
+
         target = {}
         target["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
         target["labels"] = torch.as_tensor(labels, dtype=torch.float64)
+        # target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
         
         if self.transform:
             img, target = self.transform(img, target)
