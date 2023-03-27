@@ -154,9 +154,10 @@ class ImageNetDetection(VisionDataset):
         # target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
         
         if self.transform:
-            img, target = self.transform(img, targets)
+            # img, target = self.transform(img, targets)
+            img = self.transform(img)
         
-        return img, target
+        return img, targets
 
 def find_classes(classes_file_path):
     with open(classes_file_path) as f:
