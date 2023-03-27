@@ -17,6 +17,25 @@ from torchvision.datasets.utils import extract_archive, check_integrity, downloa
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
+class ImageNetDataset1(data.Dataset):
+    def __init__(self, img_paths, labels, transform=None):
+        self.img_paths = img_paths
+        self.labels = labels
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.img_paths)
+
+    def __getitem__(self, index):
+        img_path = self.img_paths[index]
+        label = self.labels[index]
+        img = Image.open(img_path).convert('RGB')
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        return img, label
+
 
 class ImageNetDataset(data.Dataset):
     def __init__(self, label_to_paths, transform=None):
@@ -158,8 +177,10 @@ class TinyImageNetDataModule(pl.LightningDataModule):
     #     self.persistent_workers = persistent_workers
     #     self.train_transforms, self.val_transforms = train_transforms, val_transforms
     #     self.setup()
-    def __init__(self, batch_size:int, train_label, val_label, num_workers: int=2, pin_memory: bool=True, persistent_workers: bool=True, train_transforms=None, val_transforms=None):
+    def __init__(self, batch_size:int, train_img_paths, val_img_paths, train_label, val_label, num_workers: int=2, pin_memory: bool=True, persistent_workers: bool=True, train_transforms=None, val_transforms=None):
         super().__init__()
+        self.train_path=train_img_paths
+        self.val_path=val_img_paths
         self.batch_size = batch_size
         self.train_label_to_paths=train_label
         self.val_label_to_paths=val_label
@@ -174,8 +195,8 @@ class TinyImageNetDataModule(pl.LightningDataModule):
         # self.val_data = TinyImageNet(root=self.root, split='val', transform=self.val_transforms)
         # self.train_data = ImageNetDetection(root=self.root, split='train', transform=self.train_transforms)
         # self.val_data = ImageNetDetection(root=self.root, split='val', transform=self.val_transforms)
-        self.train_data = ImageNetDataset(self.train_label_to_paths, transform=self.train_transforms)
-        self.val_data = ImageNetDataset(self.val_label_to_paths, transform=self.val_transforms)
+        self.train_data = ImageNetDataset1(self.train_path, self.train_label_to_paths, transform=self.train_transforms)
+        self.val_data = ImageNetDataset1(self.val_path,self.val_label_to_paths, transform=self.val_transforms)
 
     def train_dataloader(self):
         return DataLoader(
