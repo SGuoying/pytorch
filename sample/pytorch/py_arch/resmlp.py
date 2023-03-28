@@ -41,8 +41,6 @@ class ResMlpCfg(BaseCfg):
     patch_size: int = 16  # 16
     hidden_dim: int = 128
     expansion_factor: int = 4
-    kernel_size: int = 5
-    patch_size: int = 2
     num_classes: int = 10
     channels: int = 3
 
@@ -101,20 +99,20 @@ class ResMlp(BaseModule):
         return x
 
     def _step(self, batch, mode="train"):  # or "val"
-        # input, target = batch
-        # logits = self.forward(input)
-        # loss = F.cross_entropy(logits, target)
-        # self.log(mode + "_loss", loss, prog_bar=True)
-        # accuracy = (logits.argmax(dim=1) == target).float().mean()
-        # self.log(mode + "_accuracy", accuracy, prog_bar=True)
-        # return loss
         input, target = batch
-        log_posterior = self.forward(input)
-        loss = F.nll_loss(log_posterior, target)
-        self.log(mode + "_loss", loss)
-        accuracy = (log_posterior.argmax(dim=-1) == target).float().mean()
-        self.log(mode + "_accuracy", accuracy)
+        logits = self.forward(input)
+        loss = F.cross_entropy(logits, target)
+        self.log(mode + "_loss", loss, prog_bar=True)
+        accuracy = (logits.argmax(dim=1) == target).float().mean()
+        self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss
+        # input, target = batch
+        # log_posterior = self.forward(input)
+        # loss = F.nll_loss(log_posterior, target)
+        # self.log(mode + "_loss", loss)
+        # accuracy = (log_posterior.argmax(dim=-1) == target).float().mean()
+        # self.log(mode + "_accuracy", accuracy)
+        # return loss
     
     # def training_step(self, batch, batch_idx):
     #     return self._step(batch, mode="train")
