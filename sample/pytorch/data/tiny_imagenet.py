@@ -119,13 +119,13 @@ def read_from_csv(file: str):
 
 
 class TinyImageNetDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size:int, root: str, num_workers: int=2, pin_memory: bool=True, persistent_workers: bool=True, train_transforms=None, val_transforms=None):
+    def __init__(self, batch_size:int, root: str, num_workers: int=2, pin_memory: bool=True,  train_transforms=None, val_transforms=None):
         super().__init__()
         self.batch_size = batch_size
         self.root = root
         self.num_workers = num_workers
         self.pin_memory = pin_memory
-        self.persistent_workers = persistent_workers
+        # self.persistent_workers = persistent_workers
         self.train_transforms, self.val_transforms = train_transforms, val_transforms
         self.setup()
 
@@ -140,7 +140,7 @@ class TinyImageNetDataModule(pl.LightningDataModule):
             shuffle=True,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            persistent_workers=self.persistent_workers
+            # persistent_workers=self.persistent_workers
         )
 
     def val_dataloader(self):
@@ -150,5 +150,5 @@ class TinyImageNetDataModule(pl.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            persistent_workers=self.persistent_workers
+            # persistent_workers=self.persistent_workers
         )
