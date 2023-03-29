@@ -23,9 +23,9 @@ embed_dims=[32, 64, 160, 256], mlp_ratios=[8, 8, 4, 4],
 class VanCfg:
     image_size: int = 224
     in_chans: int = 3
-    num_classes: int = 1000
+    num_classes: int = 200
     # embed_dims = [64, 128, 256, 512]
-    embed_dims =[16, 32, 64, 128]  # [32, 64, 160, 256]
+    embed_dims = [32, 64, 160, 256]
     mlp_ratio = [8, 8, 4, 4]
     drop_rate: float = 0.
     drop_path_rate: float = 0.
@@ -387,7 +387,7 @@ class bayes_Van(Van):
             *[nn.Sequential(
                 nn.AdaptiveAvgPool2d((1, 1)),
                 nn.Flatten(),
-                nn.Linear(64 * i * expansion, cfg.num_classes)
+                nn.Linear(32 * i * expansion, cfg.num_classes)
             ) for i in (1, 2, 4)
             ],
             nn.Sequential(
