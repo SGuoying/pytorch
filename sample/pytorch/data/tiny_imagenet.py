@@ -140,7 +140,7 @@ class TinyImageNetDataModule(pl.LightningDataModule):
             shuffle=True,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            persistent_workers=True
+            # persistent_workers=True
             # persistent_workers=self.persistent_workers
         )
 
@@ -151,6 +151,6 @@ class TinyImageNetDataModule(pl.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            persistent_workers=True
+            # persistent_workers=True
             # persistent_workers=self.persistent_workers
         )
