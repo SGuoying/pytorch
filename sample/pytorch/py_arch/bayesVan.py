@@ -380,56 +380,46 @@ class bayes_Van(Van):
     def __init__(self, cfg: VanCfg):
         super().__init__(cfg)
 
-        # embed_dims=[64, 128, 256, 512],
-        head1 = nn.Linear(cfg.embed_dims[0], cfg.embed_dims[1]) if cfg.num_classes > 0 else nn.Identity()
-        head2 = nn.Linear(cfg.embed_dims[1], cfg.embed_dims[2]) if cfg.num_classes > 0 else nn.Identity()
-        head3 = nn.Linear(cfg.embed_dims[2], cfg.embed_dims[3]) if cfg.num_classes > 0 else nn.Identity()
-        self.heads = nn.ModuleList([
-            head1,
-            head2,
-            head3,
-            self.head
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+
+        expansion = 1
+        self.digups = nn.ModuleList([
+            *[nn.Sequential(
+                nn.AdaptiveAvgPool2d((1, 1)),
+                nn.Flatten(),
+                nn.Linear(64 * i * expansion, cfg.num_classes)
+            ) for i in (1, 2, 4)
+            ],
+            nn.Sequential(
+                self.avgpool,
+                nn.Flatten(),
+                self.head,
+            )
         ])
 
-        # log_prior = torch.zeros(1, cfg.num_classes)
-        # self.register_buffer('log_prior', log_prior)
-        #         self.logits_bias = nn.Parameter(torch.zeros(1, num_classes))
-        # embed_dim = [128, 256, 512, cfg.num_classes]
-        embed_dim=[32, 64, 128, cfg.num_classes]  #[ 64, 160, 256, cfg.num_classes]
-        #embed_dims=[32, 64, 160, 256]
-        self.embed = embed_dim
-        for i in range(cfg.num_stages):
-            logits_layer_norm = nn.LayerNorm(self.embed[i])
-            log_prior = torch.zeros(1, self.embed[i])
-            setattr(self, f"log_prior{i + 1}", log_prior)
-            setattr(self, f"logits_layer_norm{i + 1}", logits_layer_norm)
-        # embed_dims=[128, 256, 512, num_classes]
+        log_prior = torch.zeros(1, cfg.num_classes)
+        self.register_buffer('log_prior', log_prior)
         # self.logits_layer_norm = nn.LayerNorm(num_classes)
-        # self.norm = None
-        self.apply(self._init_weights)
+        self.logits_bias = nn.Parameter(torch.zeros(1, cfg.num_classes), requires_grad=True)
+        self.logits_layer_norm = nn.LayerNorm(cfg.num_classes)
+       
         self.cfg = cfg
+        self.apply(self._init_weights)
 
     def forward_features(self, x):
         B = x.shape[0]
-        # log_prior = repeat(self.log_prior, '1 n -> b n ', b=B)
-        log = []
+        log_prior = repeat(self.log_prior, '1 n -> b n ', b=B)
 
         for i in range(self.num_stages):
-            # log_prior = getattr(self, f"log_prior{i + 1}")
             patch_embed = getattr(self, f"patch_embed{i + 1}")
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
-            logits_layer_norm = getattr(self, f"logits_layer_norm{i + 1}")
             x, H, W = patch_embed(x)
             for blk in block:
                 x = blk(x)
-                logits = x.flatten(2).transpose(1, 2)
-                logits = logits.mean(dim=1)
-                logits = self.heads[i](logits)
-                # log_prior = logits + log_prior1
-                log_prior = logits_layer_norm(log_prior)
+                logits = self.digups[i](x)
                 log_prior = log_prior + logits
-            
+                log_prior = self.logits_layer_norm(log_prior)
 
         return log_prior
 
