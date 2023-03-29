@@ -25,7 +25,7 @@ class VanCfg:
     in_chans: int = 3
     num_classes: int = 200
     # embed_dims = [64, 128, 256, 512]
-    embed_dims = [32, 64, 160, 256]
+    embed_dims = [32, 64, 128, 256]
     mlp_ratio = [8, 8, 4, 4]
     drop_rate: float = 0.
     drop_path_rate: float = 0.
