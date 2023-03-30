@@ -4,8 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import repeat
 import pytorch_lightning as pl
-from sample.pytorch_lightning.base import BaseModule
-from sample.pytorch.py_arch.base import BaseCfg, Residual
+# from sample.pytorch_lightning.base import BaseModule
+from sample.pytorch.py_arch.base import BaseCfg, Residual, BaseModule
 
 from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
 

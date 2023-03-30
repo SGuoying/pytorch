@@ -492,89 +492,60 @@ class bayes_Van2(Van):
                  # flag=False
                  ):
         super().__init__(cfg)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # embed_dims=[64, 128, 256, 512],
-        head1 = nn.Linear(cfg.embed_dims[0], cfg.embed_dims[1]) if cfg.num_classes > 0 else nn.Identity()
-        head2 = nn.Linear(cfg.embed_dims[1], cfg.embed_dims[2]) if cfg.num_classes > 0 else nn.Identity()
-        head3 = nn.Linear(cfg.embed_dims[2], cfg.embed_dims[3]) if cfg.num_classes > 0 else nn.Identity()
-        self.heads = nn.ModuleList([
-            head1,
-            head2,
-            head3,
-            self.head
+        expansion = 1
+        self.digups = nn.ModuleList([
+            *[nn.Sequential(
+                nn.AdaptiveAvgPool2d((1, 1)),
+                nn.Flatten(),
+                nn.Linear(32 * i * expansion, cfg.num_classes)
+            ) for i in (1, 2, 4)
+            ],
+            nn.Sequential(
+                self.avgpool,
+                nn.Flatten(),
+                self.head,
+            )
         ])
-        # embed_dim=[ 64, 160, 256, cfg.num_classes]
-        embed_dim=[32, 64, 128, cfg.num_classes]
-        # embed_dim = [128, 256, 512, cfg.num_classes]
-        self.embed = embed_dim
-        log_prior = torch.zeros(1, self.embed[0])
+
+        log_prior = torch.zeros(1, cfg.num_classes)
         self.register_buffer('log_prior', log_prior)
-        # for i in range(cfg.num_stages):
-            # log_prior = torch.zeros(1, self.embed[i])
-            # setattr(self, f"log_prior{i + 1}", log_prior)
-
-        # log_prior = torch.zeros(1, num_classes)
-        # self.register_buffer('log_prior', log_prior)
-        #         self.logits_bias = nn.Parameter(torch.zeros(1, num_classes))
-
         # self.logits_layer_norm = nn.LayerNorm(num_classes)
-        # self.norm = None
+        self.logits_bias = nn.Parameter(torch.zeros(1, cfg.num_classes), requires_grad=True)
+        self.logits_layer_norm = nn.LayerNorm(cfg.num_classes)
+
+       
         self.cfg = cfg
         self.apply(self._init_weights)
 
     def forward_features(self, x):
-        B = x.shape[0]
-        log_prior = repeat(self.log_prior, '1 n -> b n ', b=B)
+       B = x.shape[0]
 
-        for i in range(self.num_stages):
-            # log_prior = repeat(self.log_prior, '1 n -> b n ', b=B)
+       log_prior = repeat(self.log_prior, '1 n -> b n ', b=B)
+
+       for i in range(self.num_stages):
             patch_embed = getattr(self, f"patch_embed{i + 1}")
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
             x, H, W = patch_embed(x)
-
             for blk in block:
                 x = blk(x)
-                logits = x.flatten(2).transpose(1, 2)
-                logits = logits.mean(dim=1)
-                logits = self.heads[i](logits)
-                # log_prior = self.logits_layer_norm(logits)
-                if i == 0:
-                    log_prior = logits + log_prior
-                    log_prior = F.log_softmax(log_prior, dim=-1)
-                    log_prior = log_prior + math.log(self.embed[i])
-                else:
-                    if logits.shape != log_prior.shape:
-                        logits[:, :self.embed[i-1]] += log_prior
-                        log_prior = logits
-                        log_prior = F.log_softmax(log_prior)
-                        log_prior = log_prior + math.log(self.embed[i])
-                    else:
-                        log_prior = logits + log_prior
-                        log_prior = F.log_softmax(log_prior)
-                        log_prior = log_prior + math.log(self.embed[i])
-                log_pro = log_prior
-            # if i != self.num_stages - 1:
-            log_prior = log_pro
+                logits = self.digups[i](x)
+                log_prior = log_prior + logits
+                # log_prior = self.logits_layer_norm(log_prior)
+                log_prior = log_prior - torch.mean(log_prior, dim=-1, keepdim=True) + self.logits_bias
+                log_prior = F.log_softmax(log_prior, dim=-1)
 
-        #     x = x.flatten(2).transpose(1, 2)
-        #     x = norm(x)
-        #     if i != self.num_stages - 1:
-        #         x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
-        #
-        # x = x.mean(dim=1)
-        # x = self.head(x)
-
-        return log_prior
+       return log_prior
 
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
         log_posterior = self.forward(input)
-        # loss = F.nll_loss(log_posterior, target)
         loss = F.cross_entropy(log_posterior, target)
-        self.log(mode + "_loss", loss)
-        accuracy = (log_posterior.argmax(dim=-1) == target).float().mean()
-        self.log(mode + "_accuracy", accuracy)
+        self.log(mode + "_loss", loss, prog_bar=True)
+        accuracy = (log_posterior.argmax(dim=1) == target).float().mean()
+        self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss
 
     def training_step(self, batch, batch_idx):
