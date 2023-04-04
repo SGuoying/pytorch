@@ -194,4 +194,4 @@ class FoldNetRepeat2(FoldNet):
             xs = layer(*xs)
         x = xs[-1]
         x = self.digup(x)
-        return 
+        return x
