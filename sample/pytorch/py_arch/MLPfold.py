@@ -38,7 +38,7 @@ class FoldNetCfg(BaseCfg):
     last_epoch: int = -1
 
     
-class MixerBlock(nn.Module):
+class MixerBlock(nn.Sequential):
     def __init__(self,
                  dim,
                  num_patch,
@@ -64,7 +64,7 @@ class MixerBlock(nn.Module):
         nn.GELU(),
         nn.Dropout(dropout),
         nn.Linear(int(dim * expansion_factor_token), dim),
-        nn.Dropout(dropout),)
+        nn.Dropout(dropout))
 
 
 class FoldBlock(nn.Module):
