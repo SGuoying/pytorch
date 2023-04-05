@@ -93,10 +93,8 @@ class MLPBlock(nn.Module):
                  dropout
                  ):
         super().__init__()
-        init_values = 1e-4
-        self.gamma_1 = nn.Parameter(init_values * torch.ones((hidden_dim)), requires_grad=True)
-        self.gamma_2 = nn.Parameter(init_values * torch.ones((hidden_dim)), requires_grad=True)
-        self.layer1 = nn.Sequential(
+      
+        self.layers = nn.Sequential(
             Aff(hidden_dim),
             Rearrange('b n d -> b d n'),
             nn.Linear(num_patch, num_patch),
