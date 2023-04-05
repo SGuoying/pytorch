@@ -66,14 +66,16 @@ class MixerBlock(nn.Sequential):
         nn.Linear(int(dim * expansion_factor_token), dim),
         nn.Dropout(dropout))
 
-class PreNormResidual(nn.Module):
-    def __init__(self, dim, fn):
+class Aff(nn.Module):
+    def __init__(self, dim):
         super().__init__()
-        self.fn = fn
-        self.norm = nn.LayerNorm(dim)
+
+        self.alpha = nn.Parameter(torch.ones([1, 1, dim]))
+        self.beta = nn.Parameter(torch.zeros([1, 1, dim]))
 
     def forward(self, x):
-        return self.fn(self.norm(x)) + x
+        x = x * self.alpha + self.beta
+        return x
 def FeedForward(dim, expansion_factor = 4, dropout = 0.):
     inner_dim = int(dim * expansion_factor)
     return nn.Sequential(
@@ -88,13 +90,19 @@ class MLPBlock(nn.Module):
                  hidden_dim,
                  num_patch,
                  expansion_factor,
-                 expansion_factor_token,
                  dropout
                  ):
         super().__init__()
-        self.layers = nn.Sequential(
-            PreNormResidual(hidden_dim, FeedForward(num_patch, expansion_factor, dropout)),
-            PreNormResidual(hidden_dim, FeedForward(hidden_dim, expansion_factor_token, dropout))
+        init_values = 1e-4
+        self.gamma_1 = nn.Parameter(init_values * torch.ones((hidden_dim)), requires_grad=True)
+        self.gamma_2 = nn.Parameter(init_values * torch.ones((hidden_dim)), requires_grad=True)
+        self.layer1 = nn.Sequential(
+            Aff(hidden_dim),
+            Rearrange('b n d -> b d n'),
+            nn.Linear(num_patch, num_patch),
+            Rearrange('b d n -> b n d'),
+            FeedForward(hidden_dim, expansion_factor, dropout),
+            Aff(hidden_dim),
         )
 
     def forward(self, x):
@@ -218,21 +226,10 @@ class FoldNet(BaseModule):
         return loss
     
 class FoldNetRepeat2(FoldNet):
-    def __init__(self, cfg: FoldNetCfg):
-        super().__init__(cfg)
-        self.embed = nn.Sequential(
-            nn.Conv2d(3, cfg.hidden_dim, cfg.patch_size, cfg.patch_size),
-            Rearrange('b c h w -> b (h w) c'),
-        )
-        self.digup = nn.Sequential(
-            nn.LayerNorm(cfg.hidden_dim),
-            Reduce('b n c -> b c', 'mean'),
-            nn.Linear(cfg.hidden_dim, cfg.num_classes),
-        )
-
+      
     def forward(self, x):
         x = self.embed(x)
-        xs = x.repeat(1, self.cfg.fold_num, 1, 1)
+        xs = x.repeat(1, self.cfg.fold_num, 1)
         xs = torch.chunk(xs, self.cfg.fold_num, dim = 1)
         for layer in self.layers:
             xs = layer(*xs)
