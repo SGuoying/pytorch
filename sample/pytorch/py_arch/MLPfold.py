@@ -20,8 +20,8 @@ class FoldNetCfg(BaseCfg):
     num_classes: int = 10
     fold_num: int = 1
     drop_rate: float = 0.
-    expansion = 4
-    expansion_factor_token = 0.5
+    expansion: int = 4
+    expansion_factor_token: float = 0.5
     layer_scaler_init_value: float = 1e-6
     batch_size: int = 16
 
@@ -60,10 +60,10 @@ class MixerBlock(nn.Module):
         Rearrange('b d n -> b n d'),
         # channel_mix
         nn.LayerNorm(dim),
-        nn.Linear(dim, dim * expansion_factor_token),
+        nn.Linear(dim, int(dim * expansion_factor_token)),
         nn.GELU(),
         nn.Dropout(dropout),
-        nn.Linear(dim * expansion_factor_token, dim),
+        nn.Linear(int(dim * expansion_factor_token), dim),
         nn.Dropout(dropout),)
 
 
