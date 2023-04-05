@@ -66,6 +66,54 @@ class MixerBlock(nn.Sequential):
         nn.Linear(int(dim * expansion_factor_token), dim),
         nn.Dropout(dropout))
 
+class PreNormResidual(nn.Module):
+    def __init__(self, dim, fn):
+        super().__init__()
+        self.fn = fn
+        self.norm = nn.LayerNorm(dim)
+
+    def forward(self, x):
+        return self.fn(self.norm(x)) + x
+def FeedForward(dim, expansion_factor = 4, dropout = 0.):
+    inner_dim = int(dim * expansion_factor)
+    return nn.Sequential(
+        nn.Linear(dim, inner_dim),
+        nn.GELU(),
+        nn.Dropout(dropout),
+        nn.Linear(inner_dim, dim),
+        nn.Dropout(dropout),
+    )
+class MLPBlock(nn.Module):
+    def __init__(self,
+                 hidden_dim,
+                 num_patch,
+                 expansion_factor,
+                 expansion_factor_token,
+                 dropout
+                 ):
+        super().__init__()
+        self.layers = nn.Sequential(
+            PreNormResidual(hidden_dim, FeedForward(num_patch, expansion_factor, dropout)),
+            PreNormResidual(hidden_dim, FeedForward(hidden_dim, expansion_factor_token, dropout))
+        )
+
+    def forward(self, x):
+        return self.layers(x)
+
+
+class AttnBlock(nn.Sequential):
+    def __init__(self, hidden_dim, dropout=0.):
+        super().__init__(
+            nn.BatchNorm2d(hidden_dim),
+            nn.Conv2d(hidden_dim, hidden_dim, 1),
+            nn.GELU(),
+            nn.Conv2d(hidden_dim, hidden_dim, 5, padding=2, groups=hidden_dim),
+            nn.Conv2d(hidden_dim, hidden_dim, 7, stride=1, padding=9, groups=hidden_dim, dilation=3),
+            nn.Conv2d(hidden_dim, hidden_dim, 1),
+            nn.Dropout(dropout),
+            nn.BatchNorm2d(hidden_dim)
+        )
+
 
 class FoldBlock(nn.Module):
     "Basic block of folded ResNet"
@@ -118,6 +166,13 @@ class FoldNet(BaseModule):
                 FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, num_patch, expansion_factor=cfg.expansion,
                           expansion_factor_token=cfg.expansion_factor_token, dropout=cfg.drop_rate
                           )
+                          for _ in range(cfg.num_layers)
+            ])
+        elif cfg.block == MLPBlock:
+            num_patch =  (cfg.image_size// cfg.patch_size) ** 2
+            self.layers = nn.ModuleList([
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, num_patch, cfg.expansion, cfg.expansion_factor_token,
+                          cfg.drop_rate)
                           for _ in range(cfg.num_layers)
             ])
 
