@@ -87,7 +87,6 @@ class LKA(nn.Module):
 class AttnBlock(nn.Sequential):
     def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
         super().__init__(
-            nn.BatchNorm2d(hidden_dim),
             nn.Conv2d(hidden_dim, hidden_dim, 1),
             nn.GELU(),
             LKA(hidden_dim, kernel_size),
