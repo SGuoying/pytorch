@@ -20,8 +20,8 @@ class FoldNetCfg(BaseCfg):
     num_classes: int = 10
     fold_num: int = 1
     drop_rate: float = 0.
-    expansion: int = 1
-    expansion_factor_token: float = 0.5
+    expansion = 4
+    expansion_factor_token = 0.5
     layer_scaler_init_value: float = 1e-6
     batch_size: int = 16
 
