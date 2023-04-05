@@ -179,7 +179,7 @@ class FoldNet(BaseModule):
         elif cfg.block == MLPBlock:
             num_patch =  (cfg.image_size// cfg.patch_size) ** 2
             self.layers = nn.ModuleList([
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, num_patch, cfg.expansion, cfg.expansion_factor_token,
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, num_patch, cfg.expansion,
                           cfg.drop_rate)
                           for _ in range(cfg.num_layers)
             ])
