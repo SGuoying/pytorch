@@ -41,7 +41,7 @@ class FoldNetCfg(BaseCfg):
 class MixerBlock(nn.Sequential):
     def __init__(self,
                  dim,
-                #  num_patch,
+                 num_patch,
                 #  token_dim,
                 #  channel_dim,
                  expansion_factor = 4,
@@ -50,13 +50,13 @@ class MixerBlock(nn.Sequential):
         super().__init__(
         # token_dim = dim * expansion_factor
         # token_mix
-        # Rearrange('b n d -> b d n'),
-        nn.Linear(dim, dim * expansion_factor),
+        Rearrange('b n d -> b d n'),
+        nn.Linear(num_patch, dim * expansion_factor),
         nn.GELU(),
         nn.Dropout(dropout),
-        nn.Linear(dim * expansion_factor, dim),
+        nn.Linear(dim * expansion_factor, num_patch),
         nn.Dropout(dropout),
-        # Rearrange('b d n -> b n d'),
+        Rearrange('b d n -> b n d'),
         # channel_mix
         nn.LayerNorm(dim),
         nn.Linear(dim, int(dim * expansion_factor_token)),
@@ -168,7 +168,7 @@ class FoldNet(BaseModule):
         elif cfg.block == MixerBlock:
             num_patch =  (cfg.image_size// cfg.patch_size) ** 2
             self.layers = nn.ModuleList([
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, expansion_factor=cfg.expansion,
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, num_patch, expansion_factor=cfg.expansion,
                           expansion_factor_token=cfg.expansion_factor_token, dropout=cfg.drop_rate
                           )
                           for _ in range(cfg.num_layers)
