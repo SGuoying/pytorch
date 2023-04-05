@@ -72,6 +72,20 @@ class ResConvMixer(BaseModule):
         return loss
 
 
+class AttnBlock(nn.Sequential):
+    def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
+        super().__init__(
+            nn.BatchNorm2d(hidden_dim),
+            nn.Conv2d(hidden_dim, hidden_dim, 1),
+            nn.GELU(),
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size, padding=2, groups=hidden_dim),
+            nn.Conv2d(hidden_dim, hidden_dim, 7, stride=1, padding=9, groups=hidden_dim, dilation=3),
+            nn.Conv2d(hidden_dim, hidden_dim, 1),
+            nn.Dropout(drop_rate),
+            nn.BatchNorm2d(hidden_dim)
+        )
+
+
 class Block2(nn.Sequential):
     def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
         super().__init__(
@@ -128,6 +142,11 @@ class FoldNet(BaseModule):
         elif cfg.block == PatchConvBlock:
             self.layers = nn.ModuleList([
                 FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.drop_rate, cfg.layer_scaler_init_value)
+                for _ in range(cfg.num_layers)
+            ])
+        elif cfg.block == AttnBlock:
+            self.layers = nn.ModuleList([
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
                 for _ in range(cfg.num_layers)
             ])
 
