@@ -41,7 +41,7 @@ class FoldNetCfg(BaseCfg):
 class MixerBlock(nn.Sequential):
     def __init__(self,
                  dim,
-                 num_patch,
+                #  num_patch,
                 #  token_dim,
                 #  channel_dim,
                  expansion_factor = 4,
@@ -50,14 +50,13 @@ class MixerBlock(nn.Sequential):
         super().__init__(
         # token_dim = dim * expansion_factor
         # token_mix
-        nn.LayerNorm(dim),
-        Rearrange('b n d -> b d n'),
-        nn.Linear(num_patch, dim * expansion_factor),
+        # Rearrange('b n d -> b d n'),
+        nn.Linear(dim, dim * expansion_factor),
         nn.GELU(),
         nn.Dropout(dropout),
-        nn.Linear(dim * expansion_factor, num_patch),
+        nn.Linear(dim * expansion_factor, dim),
         nn.Dropout(dropout),
-        Rearrange('b d n -> b n d'),
+        # Rearrange('b d n -> b n d'),
         # channel_mix
         nn.LayerNorm(dim),
         nn.Linear(dim, int(dim * expansion_factor_token)),
@@ -196,6 +195,7 @@ class FoldNet(BaseModule):
         self.embed = nn.Sequential(
             nn.Conv2d(3, cfg.hidden_dim, cfg.patch_size, cfg.patch_size),
             Rearrange('b c h w -> b (h w) c'),
+            nn.LayerNorm(cfg.hidden_dim),
         )
         self.digup = nn.Sequential(
             nn.LayerNorm(cfg.hidden_dim),
@@ -224,10 +224,25 @@ class FoldNet(BaseModule):
         return loss
     
 class FoldNetRepeat2(FoldNet):
+    def __init__(self, cfg: FoldNetCfg):
+        super().__init__(cfg)
+        self.embed = nn.Sequential(
+            nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
+            nn.GELU(),
+            # nn.BatchNorm2d(cfg.hidden_dim, eps=7e-5),
+            nn.LayerNorm(cfg.hidden_dim)
+        )
+
+        self.digup = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1,1)),
+            nn.Flatten(),
+            nn.Linear(cfg.hidden_dim, cfg.num_classes)
+        )
       
     def forward(self, x):
         x = self.embed(x)
-        xs = x.repeat(1, self.cfg.fold_num, 1)
+        # xs = x.repeat(1, self.cfg.fold_num, 1)
+        xs = x.repeat(1, self.cfg.fold_num, 1, 1)
         xs = torch.chunk(xs, self.cfg.fold_num, dim = 1)
         for layer in self.layers:
             xs = layer(*xs)
