@@ -229,8 +229,8 @@ class FoldNetRepeat2(FoldNet):
         self.embed = nn.Sequential(
             nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
             nn.GELU(),
-            # nn.BatchNorm2d(cfg.hidden_dim, eps=7e-5),
-            nn.LayerNorm(cfg.hidden_dim)
+            nn.BatchNorm2d(cfg.hidden_dim, eps=7e-5),
+            # nn.LayerNorm(cfg.hidden_dim)
         )
 
         self.digup = nn.Sequential(
