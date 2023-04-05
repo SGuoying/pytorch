@@ -168,7 +168,7 @@ class FoldNet(BaseModule):
         elif cfg.block == MixerBlock:
             num_patch =  (cfg.image_size// cfg.patch_size) ** 2
             self.layers = nn.ModuleList([
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, num_patch, expansion_factor=cfg.expansion,
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, expansion_factor=cfg.expansion,
                           expansion_factor_token=cfg.expansion_factor_token, dropout=cfg.drop_rate
                           )
                           for _ in range(cfg.num_layers)
