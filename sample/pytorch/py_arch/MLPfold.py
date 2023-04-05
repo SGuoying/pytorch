@@ -121,16 +121,25 @@ class FoldNet(BaseModule):
                           for _ in range(cfg.num_layers)
             ])
 
-        self.embed = nn.Sequential(
-            nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
-            nn.GELU(),
-            nn.BatchNorm2d(cfg.hidden_dim, eps=7e-5),
-        )
+        # self.embed = nn.Sequential(
+        #     nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
+        #     nn.GELU(),
+        #     nn.BatchNorm2d(cfg.hidden_dim, eps=7e-5),
+        # )
 
+        # self.digup = nn.Sequential(
+        #     nn.AdaptiveAvgPool2d((1,1)),
+        #     nn.Flatten(),
+        #     nn.Linear(cfg.hidden_dim, cfg.num_classes)
+        # )
+        self.embed = nn.Sequential(
+            nn.Conv2d(3, cfg.hidden_dim, cfg.patch_size, cfg.patch_size),
+            Rearrange('b c h w -> b (h w) c'),
+        )
         self.digup = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1,1)),
-            nn.Flatten(),
-            nn.Linear(cfg.hidden_dim, cfg.num_classes)
+            nn.LayerNorm(cfg.hidden_dim),
+            Reduce('b n c -> b c', 'mean'),
+            nn.Linear(cfg.hidden_dim, cfg.num_classes),
         )
 
         self.cfg = cfg
