@@ -124,8 +124,8 @@ class FoldBlock(nn.Module):
     def forward(self, *xs):
         xs = list(xs)
         if self.fold_num == 1:
-            # xs[0] = xs[0] + self.units[0](xs[0])
-            xs[0] = xs[0] * self.units[0](xs[0])
+            xs[0] = xs[0] + self.units[0](xs[0])
+            # xs[0] = xs[0] * self.units[0](xs[0])
             return xs
         for i in range(self.fold_num - 1):
             xs[i+1] = xs[i+1] + self.units[i](xs[i])
