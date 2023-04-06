@@ -83,7 +83,7 @@ class LKA(nn.Module):
         attn = self.conv0(x)
         attn = self.conv_spatial(attn)
         attn = self.conv1(attn)
-        return attn * u
+        return attn + u
 class AttnBlock(nn.Sequential):
     def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
         super().__init__(
