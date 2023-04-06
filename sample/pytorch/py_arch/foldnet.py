@@ -35,7 +35,7 @@ class AttnCfg(BaseCfg):
     num_heads: int = 8
     qkv_bias: bool = True
     qk_scale: float = None
-    attn_drop_ratio: float=0.,
+    attn_drop_ratio: float=0.
     proj_drop_ratio: float=0.
 
     hidden_dim: int = 256
