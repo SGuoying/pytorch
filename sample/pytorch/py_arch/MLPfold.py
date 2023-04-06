@@ -58,12 +58,13 @@ class MixerBlock(nn.Sequential):
         nn.Dropout(dropout),
         Rearrange('b d n -> b n d'),
         # channel_mix
-        nn.LayerNorm(dim),
-        nn.Linear(dim, int(dim * expansion_factor_token)),
-        nn.GELU(),
-        nn.Dropout(dropout),
-        nn.Linear(int(dim * expansion_factor_token), dim),
-        nn.Dropout(dropout))
+        # nn.LayerNorm(dim),
+        # nn.Linear(dim, int(dim * expansion_factor_token)),
+        # nn.GELU(),
+        # nn.Dropout(dropout),
+        # nn.Linear(int(dim * expansion_factor_token), dim),
+        # nn.Dropout(dropout)
+        )
 
 class Aff(nn.Module):
     def __init__(self, dim):
