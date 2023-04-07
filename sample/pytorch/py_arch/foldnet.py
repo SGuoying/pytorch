@@ -156,9 +156,9 @@ class SE(nn.Module):
         squeeze_c = hidden_dim // squeeze_factor
         # self.squeeze = nn.AdaptiveAvgPool2d((1, 1))
         self.excitation = nn.Sequential(
-			nn.Linear(hidden_dim, squeeze_c, bias=False),
+			nn.Conv2d(hidden_dim, squeeze_c, 1),
 			nn.ReLU(inplace=True),
-			nn.Linear(squeeze_c , hidden_dim, bias=False),
+			nn.Conv2d(squeeze_c , hidden_dim, 1),
 			nn.Sigmoid())
         
     def forward(self, x):
