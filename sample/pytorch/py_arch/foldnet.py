@@ -195,9 +195,7 @@ class FoldNet(BaseModule):
         
         if cfg.block == ConvMixerLayer or cfg.block == Block2:
             self.layers = nn.ModuleList([
-                nn.Sequential(
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate),
-                SE(cfg.hidden_dim, squeeze_factor=cfg.expansion))
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
                 for _ in range(cfg.num_layers)
             ])
         elif cfg.block == BottleNeckBlock:
@@ -223,6 +221,7 @@ class FoldNet(BaseModule):
             nn.GELU(),
             nn.BatchNorm2d(cfg.hidden_dim, eps=7e-5),
         )
+        self.se = SE(cfg.hidden_dim, squeeze_factor=cfg.expansion)
 
         self.digup = nn.Sequential(
             nn.AdaptiveAvgPool2d((1,1)),
@@ -237,6 +236,7 @@ class FoldNet(BaseModule):
         xs = [x for _ in range(self.cfg.fold_num)]
         for layer in self.layers:
             xs= layer(*xs)
+            xs = self.se(xs)
         x = xs[-1]
         x = self.digup(x)
         return x
