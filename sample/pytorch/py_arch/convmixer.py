@@ -45,12 +45,12 @@ class ConvMixer(BaseModule):
                 Residual(nn.Sequential(
                     nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, groups=cfg.hidden_dim, padding="same"),
                     nn.GELU(),
-                    nn.BatchNorm2d(cfg.hidden_dim)
+                    nn.BatchNorm2d(cfg.hidden_dim),
+                    SE(cfg.hidden_dim, cfg.squeeze_factor),
                 )),
                 nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
                 nn.GELU(),
-                nn.BatchNorm2d(cfg.hidden_dim),
-                SE(cfg.hidden_dim, cfg.squeeze_factor),
+                nn.BatchNorm2d(cfg.hidden_dim), 
             ) for _ in range(cfg.num_layers)
         ])
 
