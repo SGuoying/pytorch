@@ -27,7 +27,7 @@ class FoldNetCfg(BaseCfg):
     num_classes: int = 10
     fold_num: int = 1
     drop_rate: float = 0.
-    expansion: int = 1
+    expansion: int = 4
     layer_scaler_init_value: float = 1e-6
 @dataclass
 class AttnCfg(BaseCfg):
@@ -150,6 +150,21 @@ class Block2(nn.Sequential):
             nn.Dropout(drop_rate)
         )
 
+class SE(nn.Module):
+    def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
+        super().__init__()
+        squeeze_c = hidden_dim // squeeze_factor
+        # self.squeeze = nn.AdaptiveAvgPool2d((1, 1))
+        self.excitation = nn.Sequential(
+			nn.Linear(hidden_dim, squeeze_c, bias=False),
+			nn.ReLU(inplace=True),
+			nn.Linear(squeeze_c , hidden_dim, bias=False),
+			nn.Sigmoid())
+        
+    def forward(self, x):
+        scale = F.adaptive_avg_pool2d(x, output_size=(1, 1))
+        scale = self.excitation(scale)
+        return x * scale
 
 class FoldBlock(nn.Module):
     "Basic block of folded ResNet"
@@ -191,8 +206,10 @@ class FoldNet(BaseModule):
             ])
         elif cfg.block == PatchConvBlock:
             self.layers = nn.ModuleList([
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.drop_rate, cfg.layer_scaler_init_value)
+                 nn.Sequential(FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.drop_rate, cfg.layer_scaler_init_value),
+                               SE(cfg.hidden_dim, squeeze_factor=cfg.expansion))
                 for _ in range(cfg.num_layers)
+                
             ])
         elif cfg.block == AttnBlock:
             self.layers = nn.ModuleList([
@@ -215,7 +232,7 @@ class FoldNet(BaseModule):
         self.cfg = cfg
 
     def forward(self, x):
-        x = self.embed(x).flatten(2).transpose(1, 2)
+        x = self.embed(x)
         xs = [x for _ in range(self.cfg.fold_num)]
         for layer in self.layers:
             xs= layer(*xs)
