@@ -154,7 +154,7 @@ class SE(nn.Module):
     def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
         super().__init__()
         squeeze_c = hidden_dim // squeeze_factor
-        # self.squeeze = nn.AdaptiveAvgPool2d((1, 1))
+        self.squeeze = nn.AdaptiveAvgPool2d((1, 1))
         self.excitation = nn.Sequential(
 			nn.Conv2d(hidden_dim, squeeze_c, 1),
 			nn.ReLU(inplace=True),
@@ -162,7 +162,8 @@ class SE(nn.Module):
 			nn.Sigmoid())
         
     def forward(self, x):
-        scale = F.adaptive_avg_pool2d(x, output_size=(1, 1))
+        b, c, _, _ = x.size()
+        scale = self.squeeze(x)
         scale = self.excitation(scale)
         return x * scale
 
@@ -194,8 +195,9 @@ class FoldNet(BaseModule):
         
         if cfg.block == ConvMixerLayer or cfg.block == Block2:
             self.layers = nn.ModuleList([
+                nn.Sequential(
                 FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate),
-                SE(cfg.hidden_dim, squeeze_factor=cfg.expansion)
+                SE(cfg.hidden_dim, squeeze_factor=cfg.expansion))
                 for _ in range(cfg.num_layers)
             ])
         elif cfg.block == BottleNeckBlock:
