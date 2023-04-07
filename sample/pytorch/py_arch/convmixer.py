@@ -16,7 +16,25 @@ class ConvMixerCfg(BaseCfg):
     kernel_size: int = 5
     patch_size: int = 2
     num_classes: int = 10
+    squeeze_factor: int = 4
 
+class SE(nn.Module):
+    def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
+        super().__init__()
+        squeeze_c = hidden_dim // squeeze_factor
+        self.squeeze = nn.AdaptiveAvgPool2d((1, 1))
+        self.excitation = nn.Sequential(
+			nn.Conv2d(hidden_dim, squeeze_c, 1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(squeeze_c , hidden_dim, 1),
+			nn.Sigmoid())
+        
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        scale = self.squeeze(x)
+        scale = self.excitation(scale)
+        return x * scale
+    
 
 class ConvMixer(BaseModule):
     def __init__(self, cfg:ConvMixerCfg):
@@ -31,7 +49,8 @@ class ConvMixer(BaseModule):
                 )),
                 nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
                 nn.GELU(),
-                nn.BatchNorm2d(cfg.hidden_dim)
+                nn.BatchNorm2d(cfg.hidden_dim),
+                SE(cfg.hidden_dim, cfg.squeeze_factor),
             ) for _ in range(cfg.num_layers)
         ])
 
