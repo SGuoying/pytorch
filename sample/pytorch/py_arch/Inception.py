@@ -201,7 +201,7 @@ class IncNet2(BaseModule):
         self.digup = nn.Sequential(
             nn.AdaptiveAvgPool2d((1,1)),
             nn.Flatten(),
-            nn.Linear(cfg.hidden_dim , cfg.num_classes)
+            nn.Linear(cfg.hidden_dim * 4 , cfg.num_classes)
         )
 
         self.cfg = cfg
