@@ -23,9 +23,9 @@ class ConvMixerCfg(BaseCfg):
     # layer_scale_init: float = 1e-6
 
 class ConvMixerBlock(nn.Module):
-    def __init__(self, hidden_dim, kernel_size, squeeze_factor, drop_rate,):
+    def __init__(self, hidden_dim, kernel_size, squeeze_factor, drop_rate, num_layers):
         super().__init__()
-        self.layer1 = nn.Sequential(
+        self.layer1 =nn.ModuleList([ nn.Sequential(
             Residual(nn.Sequential(
                     nn.Conv2d(hidden_dim, hidden_dim, kernel_size, groups=hidden_dim, padding="same"),
                     nn.GELU(),
@@ -35,14 +35,16 @@ class ConvMixerBlock(nn.Module):
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size=1),
             nn.GELU(),
             nn.BatchNorm2d(hidden_dim),
-            ) )
-        self.layer2 = nn.Sequential(
+            ) )for _ in range(num_layers)
+            ])
+        self.layer2 = nn.ModuleList([nn.Sequential(
             nn.Conv2d(hidden_dim, hidden_dim // squeeze_factor, 1),
             nn.GELU(),
             nn.Conv2d(hidden_dim // squeeze_factor, hidden_dim, 1),
             nn.Sigmoid(),
-        )
-        self.layer3 = nn.Sequential(
+        )for _ in range(num_layers)
+        ])
+        self.layer3 = nn.ModuleList([nn.Sequential(
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size, groups=hidden_dim, padding="same"),
             nn.GELU(),
             # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
@@ -53,8 +55,9 @@ class ConvMixerBlock(nn.Module):
             # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
             nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
             nn.Dropout(drop_rate)
-        )
-        self.layer4 = nn.Sequential(
+        )for _ in range(num_layers)
+        ])
+        self.layer4 = nn.ModuleList([nn.Sequential(
             # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
             # nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
             nn.BatchNorm2d(hidden_dim) ,
@@ -66,7 +69,8 @@ class ConvMixerBlock(nn.Module):
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size=1),
             # LayerScaler(hidden_dim, init_scale=layer_scale_init),
             StochasticDepth(drop_rate, 'row') if drop_rate > 0. else nn.Identity(),
-        )
+        )for _ in range(num_layers)
+        ])
 
     def forward(self, x):
         layer1 = self.layer1(x)
@@ -84,7 +88,7 @@ class IncNet(BaseModule):
         super().__init__(cfg)
         
         self.block = ConvMixerBlock(cfg.hidden_dim, cfg.kernel_size, cfg.squeeze_factor,
-                                    cfg.drop_rate)
+                                    cfg.drop_rate, cfg.num_layers)
         
         self.blocks = nn.ModuleList([])
 
