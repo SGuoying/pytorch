@@ -29,7 +29,12 @@ class ConvMixerBlock(nn.Module):
                     nn.Conv2d(hidden_dim, hidden_dim, kernel_size, groups=hidden_dim, padding="same"),
                     nn.GELU(),
                     nn.BatchNorm2d(hidden_dim)
-        )))
+        )),
+        nn.Sequential(
+            nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
+            nn.GELU(),
+            nn.BatchNorm2d(cfg.hidden_dim),
+            ) )
         self.layer2 = nn.Sequential(
             nn.Conv2d(hidden_dim, hidden_dim // squeeze_factor, 1),
             nn.GELU(),
@@ -74,11 +79,6 @@ class ConvMixerBlock(nn.Module):
 class IncNet(BaseModule):
     def __init__(self, cfg: ConvMixerCfg):
         super().__init__(cfg)
-        self.pw  = nn.Sequential(
-            nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
-            nn.GELU(),
-            nn.BatchNorm2d(cfg.hidden_dim),
-            ) 
         
         self.block = ConvMixerBlock(cfg.hidden_dim, cfg.kernel_size, cfg.squeeze_factor,
                                     cfg.drop_rate, cfg.layer_scale_init)
@@ -100,7 +100,6 @@ class IncNet(BaseModule):
     def forward(self, x):
         x = self.embed(x)
         x = self.block(x)
-        x = self.pw(x)
         x = self.digup(x)
         return x
     
