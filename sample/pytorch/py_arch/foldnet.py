@@ -155,6 +155,30 @@ class Block2(nn.Sequential):
             
         )
 
+
+class Block3(nn.Sequential):
+    def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0., squeeze_factor:int = 4):
+        super().__init__()
+        self.layer = nn.Sequential(
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size, groups=hidden_dim, padding="same"),
+            nn.GELU(),
+            # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
+            nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
+            nn.Dropout(drop_rate),
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size=1),
+            nn.GELU(),
+            # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
+            nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
+            nn.Dropout(drop_rate),)
+        self.se = SE(hidden_dim, squeeze_factor)
+
+    def forward(self, x):
+        x = self.layer(x)
+        x = self.se(x)
+        return x 
+            
+        
+
 class SE(nn.Module):
     def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
         super().__init__()
@@ -198,12 +222,12 @@ class FoldNet(BaseModule):
     def __init__(self, cfg:FoldNetCfg):
         super().__init__(cfg)
         
-        if cfg.block == ConvMixerLayer or cfg.block == Block2:
-            self.layers = nn.ModuleList(nn.Sequential([
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate),
-                SE(cfg.hidden_dim, cfg.squeeze_factor)
-            ])for _ in range(cfg.num_layers)
-            )
+        if cfg.block == ConvMixerLayer or cfg.block == Block3:
+            self.layers = nn.ModuleList([
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate, cfg.squeeze_factor)
+                for _ in range(cfg.num_layers)
+            ])
+            
         elif cfg.block == BottleNeckBlock:
             self.layers = nn.ModuleList([
                 FoldBlock(cfg.fold_num, cfg.block, in_features = cfg.hidden_dim, out_features = cfg.hidden_dim,
@@ -227,7 +251,7 @@ class FoldNet(BaseModule):
             nn.GELU(),
             nn.BatchNorm2d(cfg.hidden_dim, eps=7e-5),
         )
-        self.se = SE(cfg.hidden_dim, squeeze_factor=cfg.expansion)
+        # self.se = SE(cfg.hidden_dim, squeeze_factor=cfg.expansion)
 
         self.digup = nn.Sequential(
             nn.AdaptiveAvgPool2d((1,1)),
@@ -242,7 +266,6 @@ class FoldNet(BaseModule):
         xs = [x for _ in range(self.cfg.fold_num)]
         for layer in self.layers:
             xs= layer(*xs)
-            xs = self.se(xs)
         x = xs[-1]
         x = self.digup(x)
         return x
