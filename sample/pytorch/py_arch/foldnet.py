@@ -29,6 +29,8 @@ class FoldNetCfg(BaseCfg):
     drop_rate: float = 0.
     expansion: int = 4
     layer_scaler_init_value: float = 1e-6
+
+    squeeze_factor: int = 4
 @dataclass
 class AttnCfg(BaseCfg):
     block: nn.Module = None
@@ -46,6 +48,8 @@ class AttnCfg(BaseCfg):
     # drop_rate: float = 0.
     expansion: int = 1
     layer_scaler_init_value: float = 1e-6
+
+    squeeze_factor: int = 4
 
 class ResConvMixer(BaseModule):
     def __init__(self, cfg:FoldNetCfg):
@@ -136,7 +140,7 @@ class AttnBlock(nn.Module):
         return x
 
 class Block2(nn.Sequential):
-    def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
+    def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0., squeeze_factor: int = 4):
         super().__init__(
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size, groups=hidden_dim, padding="same"),
             nn.GELU(),
@@ -147,7 +151,8 @@ class Block2(nn.Sequential):
             nn.GELU(),
             # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
             nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
-            nn.Dropout(drop_rate)
+            nn.Dropout(drop_rate),
+            SE(hidden_dim, squeeze_factor)
         )
 
 class SE(nn.Module):
@@ -195,7 +200,7 @@ class FoldNet(BaseModule):
         
         if cfg.block == ConvMixerLayer or cfg.block == Block2:
             self.layers = nn.ModuleList([
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate, cfg.squeeze_factor)
                 for _ in range(cfg.num_layers)
             ])
         elif cfg.block == BottleNeckBlock:
