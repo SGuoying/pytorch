@@ -73,8 +73,10 @@ class ConvMixerBlock(nn.Module):
         layer2 = self.layer2(x)
         layer3 = self.layer3(x)
         layer4 = self.layer4(x)
-        layer = [layer1, layer2, layer3, layer4]
-        return torch.cat(layer, 1)
+        # layer = [layer1, layer2, layer3, layer4]
+        # return torch.cat(layer, 1)
+        layer = layer1 + layer2 + layer3 + layer4
+        return layer
     
 
 class IncNet(BaseModule):
