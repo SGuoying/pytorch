@@ -73,10 +73,14 @@ class ConvMixerBlock(nn.Module):
         ])
 
     def forward(self, x):
-        layer1 = self.layer1(x)
-        layer2 = self.layer2(x)
-        layer3 = self.layer3(x)
-        layer4 = self.layer4(x)
+        for layer1 in self.layer1:
+            layer1 = layer1(x)
+        for layer2 in self.layer2:
+            layer2 = layer2(x)
+        for layer3 in self.layer3:
+            layer3 = layer3(x)
+        for layer4 in self.layer4:
+            layer4 = layer4(x)
         # layer = [layer1, layer2, layer3, layer4]
         # return torch.cat(layer, 1)
         layer = layer1 + layer2 + layer3 + layer4
