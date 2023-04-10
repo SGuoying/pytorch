@@ -143,7 +143,7 @@ class ConvBlock(nn.Module):
             # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
             nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
             nn.Dropout(drop_rate),
-            nn.Conv2d(hidden_dim, hidden_dim // 4, kernel_size=1),
+            nn.Conv2d(hidden_dim, hidden_dim // 4, kernel_size=1)
         )
         self.layer3 = nn.Sequential(
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size, groups=hidden_dim, padding="same"),
