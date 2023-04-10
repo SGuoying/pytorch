@@ -19,10 +19,10 @@ class ConvMixerCfg(BaseCfg):
     num_classes: int = 10
     squeeze_factor: int = 4
     drop_rate: float = 0.
-    layer_scale_init: float = 1e-6
+    # layer_scale_init: float = 1e-6
 
 class ConvMixerBlock(nn.Module):
-    def __init__(self, hidden_dim, kernel_size, squeeze_factor, drop_rate, layer_scale_init):
+    def __init__(self, hidden_dim, kernel_size, squeeze_factor, drop_rate,):
         super().__init__()
         self.layer1 = nn.Sequential(
             Residual(nn.Sequential(
@@ -31,9 +31,9 @@ class ConvMixerBlock(nn.Module):
                     nn.BatchNorm2d(hidden_dim)
         )),
         nn.Sequential(
-            nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size=1),
             nn.GELU(),
-            nn.BatchNorm2d(cfg.hidden_dim),
+            nn.BatchNorm2d(hidden_dim),
             ) )
         self.layer2 = nn.Sequential(
             nn.Conv2d(hidden_dim, hidden_dim // squeeze_factor, 1),
@@ -81,7 +81,7 @@ class IncNet(BaseModule):
         super().__init__(cfg)
         
         self.block = ConvMixerBlock(cfg.hidden_dim, cfg.kernel_size, cfg.squeeze_factor,
-                                    cfg.drop_rate, cfg.layer_scale_init)
+                                    cfg.drop_rate)
 
         self.embed = nn.Sequential(
             nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),

@@ -24,7 +24,7 @@ class PatchConvBlock(nn.Module):
             nn.GELU(),
             SqueezeExcitation(hidden_dim, hidden_dim // 4),
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size=1),
-            # LayerScaler(hidden_dim, init_scale=layer_scale_init),
+            LayerScaler(hidden_dim, init_scale=layer_scale_init),
             StochasticDepth(drop_rate, 'row') if drop_rate > 0. else nn.Identity(),
         )
 
