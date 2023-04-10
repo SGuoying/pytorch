@@ -53,7 +53,7 @@ class ConvMixerBlock(nn.Module):
             nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
             nn.Dropout(drop_rate)
         )
-        self.layer4 = self.layers = nn.Sequential(
+        self.layer4 = nn.Sequential(
             # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
             # nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
             nn.BatchNorm2d(hidden_dim) ,
@@ -72,7 +72,7 @@ class ConvMixerBlock(nn.Module):
         layer2 = self.layer2(x)
         layer3 = self.layer3(x)
         layer4 = self.layer4(x)
-        layer = [layer1, layer2, layer3,layer4]
+        layer = [layer1, layer2, layer3, layer4]
         return torch.cat(layer, 1)
     
 
@@ -92,7 +92,7 @@ class IncNet(BaseModule):
         self.digup = nn.Sequential(
             nn.AdaptiveAvgPool2d((1,1)),
             nn.Flatten(),
-            nn.Linear(cfg.hidden_dim, cfg.num_classes)
+            nn.Linear(cfg.hidden_dim * 4, cfg.num_classes)
         )
 
         self.cfg = cfg
