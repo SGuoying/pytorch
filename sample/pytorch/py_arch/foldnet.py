@@ -95,7 +95,29 @@ class ResConvMixer(BaseModule):
         accuracy = (logits.argmax(dim=1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss
+class LKA(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.conv0 = nn.Conv2d(dim, dim, 5, padding=2, groups=dim)
+        self.conv_spatial = nn.Conv2d(dim, dim, 7, stride=1, padding=9, groups=dim, dilation=3)
+        self.conv1 = nn.Conv2d(dim, dim, 1)
 
+    def forward(self, x):
+        u = x.clone()
+        attn = self.conv0(x)
+        attn = self.conv_spatial(attn)
+        attn = self.conv1(attn)
+        return attn * u
+class Atten(nn.Sequential):
+    def __init__(self, dim, drop_rate):
+        super().__init__(
+            nn.Conv2d(dim, dim, 1),
+            nn.GELU(), 
+            LKA(dim),
+            nn.Dropout(drop_rate),
+            nn.Conv2d(dim, dim, 1),
+            # nn.Dropout(drop_rate),
+        )
 
 class AttnBlock(nn.Module):
     def __init__(self,
@@ -177,8 +199,6 @@ class Block3(nn.Sequential):
         x = self.se(x)
         return x 
             
-        
-
 class SE(nn.Module):
     def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
         super().__init__()
@@ -240,9 +260,9 @@ class FoldNet(BaseModule):
                 FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.drop_rate, cfg.layer_scaler_init_value)
                 for _ in range(cfg.num_layers)
             ])
-        elif cfg.block == AttnBlock:
+        elif cfg.block == Atten:
             self.layers = nn.ModuleList([
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.num_heads, cfg.qkv_bias, cfg.qk_scale, cfg.attn_drop_ratio, cfg.proj_drop_ratio)
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.drop_rate)
                 for _ in range(cfg.num_layers)
             ])
 
