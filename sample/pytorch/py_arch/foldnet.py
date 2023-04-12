@@ -100,10 +100,17 @@ class LKA(nn.Module):
 class Cbamblock(nn.Module):
     def __init__(self, dim, ratio, kernel_size):
         super().__init__()
+        self.a = nn.Sequential(nn.Conv2d(dim, dim, kernel_size, groups=dim, padding="same"),
+                               nn.GELU(),
+                               nn.Conv2d(dim, dim, kernel_size=1),
+                               nn.BatchNorm2d(dim)
+                               )
+        
         self.channelattention = ChannelAttention(dim, ratio)
         self.spatialattention = SpatialAttention(kernel_size)
 
     def forward(self, x):
+        x = self.a(x)
         x = x * self.channelattention(x)
         x = x * self.spatialattention(x)
         return x
