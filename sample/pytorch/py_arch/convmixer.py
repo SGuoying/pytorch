@@ -97,7 +97,7 @@ class AttnMixer(BaseModule):
                     LKA(cfg.hidden_dim),
                     nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
                 )),
-                nn.Dropout(drop_rate),
+                nn.Dropout(cfg.drop_rate),
                 nn.BatchNorm2d(cfg.hidden_dim), 
             ) for _ in range(cfg.num_layers)
         ])
