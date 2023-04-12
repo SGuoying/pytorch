@@ -5,8 +5,6 @@ import os, csv
 from torchvision.datasets import VisionDataset
 from torchvision.datasets.folder import default_loader
 from torchvision.datasets.utils import extract_archive, check_integrity, download_url, verify_str_arg
-import pytorch_lightning as pl
-from torch.utils.data import DataLoader
 
 
 class TinyImageNet(VisionDataset):
@@ -118,39 +116,3 @@ def read_from_csv(file: str):
     return data
 
 
-class TinyImageNetDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size:int, root: str, num_workers: int=2, pin_memory: bool=True,  train_transforms=None, val_transforms=None):
-        super().__init__()
-        self.batch_size = batch_size
-        self.root = root
-        self.num_workers = num_workers
-        self.pin_memory = pin_memory
-        # self.persistent_workers = persistent_workers
-        self.train_transforms, self.val_transforms = train_transforms, val_transforms
-        self.setup()
-
-    def setup(self, stage=None):
-        self.train_data = TinyImageNet(root=self.root, split='train', transform=self.train_transforms)
-        self.val_data = TinyImageNet(root=self.root, split='val', transform=self.val_transforms)
-
-    def train_dataloader(self):
-        return DataLoader(
-            self.train_data,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            # persistent_workers=True
-            # persistent_workers=self.persistent_workers
-        )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_data,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            # persistent_workers=True
-            # persistent_workers=self.persistent_workers
-        )
