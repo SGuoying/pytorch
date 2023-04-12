@@ -97,24 +97,6 @@ class LKA(nn.Module):
         attn = self.conv1(attn)
         return attn * u
     
-class Cbamblock(nn.Module):
-    def __init__(self, dim, ratio, kernel_size):
-        super().__init__()
-        self.a = nn.Sequential(nn.Conv2d(dim, dim, kernel_size, groups=dim, padding="same"),
-                               nn.GELU(),
-                               nn.Conv2d(dim, dim, kernel_size=1),
-                               nn.BatchNorm2d(dim)
-                               )
-        
-        self.channelattention = ChannelAttention(dim, ratio)
-        self.spatialattention = SpatialAttention(kernel_size)
-
-    def forward(self, x):
-        x = self.a(x)
-        x = x * self.channelattention(x)
-        x = x * self.spatialattention(x)
-        return x
-
 class Atten(nn.Sequential):
     def __init__(self, dim, drop_rate):
         super().__init__(
@@ -230,12 +212,6 @@ class FoldNet(BaseModule):
                 FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.drop_rate)
                 for _ in range(cfg.num_layers)
             ])
-        elif cfg.block == Cbamblock:
-            self.layers = nn.ModuleList([
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.expansion, 3)
-                for _ in range(cfg.num_layers)
-            ])
-
         self.embed = nn.Sequential(
             nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
             nn.GELU(),
