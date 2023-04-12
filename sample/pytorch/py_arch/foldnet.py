@@ -114,8 +114,10 @@ class Atten(nn.Sequential):
             nn.Conv2d(dim, dim, 1),
             nn.GELU(), 
             LKA(dim),
+            nn.BatchNorm2d(dim, eps=7e-5),
             nn.Dropout(drop_rate),
             nn.Conv2d(dim, dim, 1),
+            nn.GELU(), 
             # nn.Dropout(drop_rate),
         )
 
@@ -176,7 +178,6 @@ class Block2(nn.Sequential):
             nn.Dropout(drop_rate),
             
         )
-
 
 class Block3(nn.Sequential):
     def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0., squeeze_factor:int = 4):
