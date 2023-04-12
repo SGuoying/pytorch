@@ -18,6 +18,7 @@ class ConvMixerCfg(BaseCfg):
     patch_size: int = 2
     num_classes: int = 10
     squeeze_factor: int = 4
+    drop_rate: float = 0.1
 
 class SE(nn.Module):
     def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
@@ -96,6 +97,7 @@ class AttnMixer(BaseModule):
                     LKA(cfg.hidden_dim),
                     nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
                 )),
+                nn.Dropout(drop_rate),
                 nn.BatchNorm2d(cfg.hidden_dim), 
             ) for _ in range(cfg.num_layers)
         ])
