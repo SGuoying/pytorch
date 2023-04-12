@@ -51,50 +51,38 @@ class AttnCfg(BaseCfg):
 
     squeeze_factor: int = 4
 
-class ResConvMixer(BaseModule):
-    def __init__(self, cfg:FoldNetCfg):
-        super().__init__(cfg)
-
-        self.layers = nn.Sequential(*[
-            Residual(nn.Sequential(
-                nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, groups=cfg.hidden_dim, padding="same"),
-                nn.GELU(),
-                nn.BatchNorm2d(cfg.hidden_dim),
-                nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
-                nn.GELU(),
-                nn.BatchNorm2d(cfg.hidden_dim)
-            )
-            ) for _ in range(cfg.num_layers)
-        ])
-
-        self.embed = nn.Sequential(
-            nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
-            nn.GELU(),
-            nn.BatchNorm2d(cfg.hidden_dim),
-        )
-
-        self.digup = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1,1)),
-            nn.Flatten(),
-            nn.Linear(cfg.hidden_dim, cfg.num_classes)
-        )
-
-        self.cfg = cfg
+class ChannelAttention(nn.Module):
+    def __init__(self, dim, ratio=4):
+        super(ChannelAttention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+           
+        self.fc = nn.Sequential(nn.Conv2d(dim, dim // ratio, 1, bias=False),
+                               nn.ReLU(),
+                               nn.Conv2d(dim // ratio, dim, 1, bias=False))
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        x = self.embed(x)
-        x= self.layers(x)
-        x= self.digup(x)
-        return x
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
+        out = avg_out + max_out
+        return self.sigmoid(out)
 
-    def _step(self, batch, mode="train"):  # or "val"
-        input, target = batch
-        logits = self.forward(input)
-        loss = F.cross_entropy(logits, target)
-        self.log(mode + "_loss", loss, prog_bar=True)
-        accuracy = (logits.argmax(dim=1) == target).float().mean()
-        self.log(mode + "_accuracy", accuracy, prog_bar=True)
-        return loss
+class SpatialAttention(nn.Module):
+    def __init__(self, kernel_size=3):
+        super(SpatialAttention, self).__init__()
+        assert kernel_size in (3, 7), 'kernel size must be 3 or 7'
+        padding = 3 if kernel_size == 7 else 1
+
+        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        x = torch.cat([avg_out, max_out], dim=1)
+        x = self.conv1(x)
+        return self.sigmoid(x)
 class LKA(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -108,6 +96,18 @@ class LKA(nn.Module):
         attn = self.conv_spatial(attn)
         attn = self.conv1(attn)
         return attn * u
+    
+class Cbamblock(nn.Module):
+    def __init__(self, dim, ratio, kernel_size):
+        super().__init__()
+        self.channelattention = ChannelAttention(dim, ratio)
+        self.spatialattention = SpatialAttention(kernel_size)
+
+    def forward(self, x):
+        x = x * self.channelattention(x)
+        x = x * self.spatialattention(x)
+        return x
+
 class Atten(nn.Sequential):
     def __init__(self, dim, drop_rate):
         super().__init__(
@@ -120,48 +120,6 @@ class Atten(nn.Sequential):
             nn.GELU(), 
             # nn.Dropout(drop_rate),
         )
-
-class AttnBlock(nn.Module):
-    def __init__(self,
-                 dim,
-                 num_heads=8,
-                 qkv_bias=False,
-                 qk_scale=None,
-                 attn_drop_ratio=0.,
-                 proj_drop_ratio=0.):
-        super().__init__()
-        self.num_heads = num_heads
-        head_dim = dim // num_heads
-        self.scale = qk_scale or head_dim ** -0.5
-        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
-        self.attn_drop = nn.Dropout(attn_drop_ratio)
-        self.proj = nn.Linear(dim, dim)
-        self.proj_drop = nn.Dropout(proj_drop_ratio)
-
-    def forward(self, x):
-        # [batch_size, num_patches+1, total_embed_dim]
-        B, N, C = x.shape
-
-        # qkv(): -> [batch_size, num_patches + 1, 3 * total_embed_dim]
-        # reshape: -> [batch_size, num_patches + 1, 3, num_heads, embed_dim_per_head]
-        # permute: -> [3, batch_size, num_heads, num_patches + 1, embed_dim_per_head]
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        # [batch_size, num_heads, num_patches + 1, embed_dim_per_head]
-        q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple)
-
-        # transpose: -> [batch_size, num_heads, embed_dim_per_head, num_patches + 1]
-        # @: multiply -> [batch_size, num_heads, num_patches + 1, num_patches + 1]
-        attn = (q @ k.transpose(-2, -1)) * self.scale
-        attn = attn.softmax(dim=-1)
-        attn = self.attn_drop(attn)
-
-        # @ :multiply -> [batch_size, num_heads, num_patches + 1, embed_dim_per_head]
-        # transpose: ->[batch_size, num_patches + 1, num_heads, embed_dim_per_head]
-        # reshape: -> [batch_size, num_patches + 1,total_embed_dim]
-        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
-        x = self.proj(x)
-        x = self.proj_drop(x)
-        return x
 
 class Block2(nn.Sequential):
     def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
@@ -247,8 +205,7 @@ class FoldNet(BaseModule):
             self.layers = nn.ModuleList([
                 FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate, cfg.squeeze_factor)
                 for _ in range(cfg.num_layers)
-            ])
-            
+            ])         
         elif cfg.block == BottleNeckBlock:
             self.layers = nn.ModuleList([
                 FoldBlock(cfg.fold_num, cfg.block, in_features = cfg.hidden_dim, out_features = cfg.hidden_dim,
@@ -266,13 +223,17 @@ class FoldNet(BaseModule):
                 FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.drop_rate)
                 for _ in range(cfg.num_layers)
             ])
+        elif cfg.block == Cbamblock:
+            self.layers = nn.ModuleList([
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.expansion, 3)
+                for _ in range(cfg.num_layers)
+            ])
 
         self.embed = nn.Sequential(
             nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
             nn.GELU(),
             nn.BatchNorm2d(cfg.hidden_dim, eps=7e-5),
         )
-        # self.se = SE(cfg.hidden_dim, squeeze_factor=cfg.expansion)
 
         self.digup = nn.Sequential(
             nn.AdaptiveAvgPool2d((1,1)),
