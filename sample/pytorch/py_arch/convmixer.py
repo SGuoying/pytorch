@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, Residual, BaseModule
 
 from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
+from sample.pytorch.py_arch.foldnet import LKA
 
 
 @dataclass
@@ -50,6 +51,51 @@ class ConvMixer(BaseModule):
                 )),
                 nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
                 nn.GELU(),
+                nn.BatchNorm2d(cfg.hidden_dim), 
+            ) for _ in range(cfg.num_layers)
+        ])
+
+        self.embed = nn.Sequential(
+            nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
+            nn.GELU(),
+            nn.BatchNorm2d(cfg.hidden_dim),
+        )
+
+        self.digup = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1,1)),
+            nn.Flatten(),
+            nn.Linear(cfg.hidden_dim, cfg.num_classes)
+        )
+
+        self.cfg = cfg
+
+    def forward(self, x):
+        x = self.embed(x)
+        x= self.layers(x)
+        x= self.digup(x)
+        return x
+
+    def _step(self, batch, mode="train"):  # or "val"
+        input, target = batch
+        logits = self.forward(input)
+        loss = F.cross_entropy(logits, target)
+        self.log(mode + "_loss", loss, prog_bar=True)
+        accuracy = (logits.argmax(dim=1) == target).float().mean()
+        self.log(mode + "_accuracy", accuracy, prog_bar=True)
+        return loss
+
+class AttnMixer(BaseModule):
+    def __init__(self, cfg:ConvMixerCfg):
+        super().__init__(cfg)
+
+        self.layers = nn.Sequential(*[
+            nn.Sequential(
+                Residual(nn.Sequential(
+                    nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
+                    nn.GELU(),
+                    LKA(cfg.hidden_dim),
+                    nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
+                )),
                 nn.BatchNorm2d(cfg.hidden_dim), 
             ) for _ in range(cfg.num_layers)
         ])
