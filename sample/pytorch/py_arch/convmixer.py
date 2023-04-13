@@ -37,6 +37,25 @@ class SE(nn.Module):
         scale = self.excitation(scale)
         return x * scale
     
+class DilatedCV(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        
+        # self.layer1 = nn.Conv2d(dim, dim, 3, groups=dim, padding=1),
+        self.layer_d1 = nn.Conv2d(dim, dim, 3, stride=1, padding=1, dilation=1),
+        self.layer_d2 = nn.Conv2d(dim, dim, 3, stride=1, padding=2, dilation=2),
+        self.layer_d3 = nn.Conv2d(dim, dim, 3, stride=1, padding=3, dilation=3),
+        self.layer2 = nn.Conv2d(dim, dim, 1)
+    
+    def forward(self, x):
+        u = x.clone()
+        # attn = self.layer1(x)
+        attn = self.layer_d1(attn)
+        attn = self.layer_d2(attn)
+        attn = self.layer_d3(attn)
+        attn = self.layer2(attn)
+        return attn * u
+        
 
 class ConvMixer(BaseModule):
     def __init__(self, cfg:ConvMixerCfg):
@@ -94,7 +113,8 @@ class AttnMixer(BaseModule):
                 Residual(nn.Sequential(
                     nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
                     nn.GELU(),
-                    LKA(cfg.hidden_dim),
+                    # LKA(cfg.hidden_dim),
+                    DilatedCV(cfg.hidden_dim),
                     nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
                 )),
                 nn.Dropout(cfg.drop_rate),
@@ -139,8 +159,7 @@ class IsotropicCfg(BaseCfg):
     num_classes: int = 10
 
     drop_rate: float = 0. 
-
-    
+   
 class Isotropic(BaseModule):
     def __init__(self, cfg: IsotropicCfg):
         super().__init__(cfg)
@@ -180,7 +199,6 @@ class Isotropic(BaseModule):
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss
     
-
 class SumConvMixer(ConvMixer):
     def __init__(self, cfg:ConvMixerCfg):
         super().__init__(cfg)
@@ -203,7 +221,6 @@ class SumConvMixer(ConvMixer):
             x = x + x1
         x = self.digup(x)
         return x
-
 
 class BayesConvMixer(ConvMixer):
     def __init__(self, cfg:ConvMixerCfg):
