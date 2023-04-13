@@ -50,7 +50,7 @@ class DilatedCV(nn.Module):
     def forward(self, x):
         u = x.clone()
         # attn = self.layer1(x)
-        attn = self.layer_d1(attn)
+        attn = self.layer_d1(x)
         attn = self.layer_d2(attn)
         attn = self.layer_d3(attn)
         attn = self.layer2(attn)
