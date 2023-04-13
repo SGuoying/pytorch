@@ -35,27 +35,7 @@ class SE(nn.Module):
         b, c, _, _ = x.size()
         scale = self.squeeze(x)
         scale = self.excitation(scale)
-        return x * scale
-    
-class DilatedCV(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        
-        # self.layer1 = nn.Conv2d(dim, dim, 3, groups=dim, padding=1)
-        # self.layer_d1 = nn.Conv2d(dim, dim, 3, stride=1, padding=1, dilation=1)
-        self.layer_d2 = nn.Conv2d(dim, dim, 3, stride=1, padding=2, dilation=2, groups=dim)
-        # self.layer_d3 = nn.Conv2d(dim, dim, 3, stride=1, padding=3, dilation=3)
-        self.layer2 = nn.Conv2d(dim, dim, 1)
-    
-    def forward(self, x):
-        u = x.clone()
-        # attn = self.layer1(x)
-        attn = self.layer_d1(x)
-        attn = self.layer_d2(attn)
-        attn = self.layer_d3(attn)
-        attn = self.layer2(attn)
-        return attn * u
-        
+        return x * scale      
 
 class ConvMixer(BaseModule):
     def __init__(self, cfg:ConvMixerCfg):

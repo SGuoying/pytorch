@@ -146,10 +146,10 @@ class ConvMixerLayer(nn.Sequential):
 class Layer(nn.Sequential):
     def __init__(self, hidden_dim: int, drop_rate: float=0.):
         super().__init__(
-            nn.Conv2d(hidden_dim, hidden_dim, 3, padding=1, groups=hidden_dim),
+            nn.Conv2d(hidden_dim, hidden_dim, 1),
             nn.GELU(),
             nn.BatchNorm2d(hidden_dim),
-            nn.Conv2d(hidden_dim, hidden_dim, 3, padding=1, groups=hidden_dim),
+            nn.Conv2d(hidden_dim, hidden_dim, 1),
             nn.GELU(),
             nn.BatchNorm2d(hidden_dim),
             nn.Conv2d(hidden_dim, hidden_dim, 1),
