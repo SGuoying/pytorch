@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from einops import repeat
 import pytorch_lightning as pl
 # from sample.pytorch_lightning.base import BaseModule
-from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, Residual, BaseModule
+from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, Layer, Residual, BaseModule
 
 from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
 from sample.pytorch.py_arch.foldnet import LKA
@@ -42,9 +42,9 @@ class DilatedCV(nn.Module):
         super().__init__()
         
         # self.layer1 = nn.Conv2d(dim, dim, 3, groups=dim, padding=1)
-        self.layer_d1 = nn.Conv2d(dim, dim, 3, stride=1, padding=1, dilation=1)
-        self.layer_d2 = nn.Conv2d(dim, dim, 3, stride=1, padding=2, dilation=2)
-        self.layer_d3 = nn.Conv2d(dim, dim, 3, stride=1, padding=3, dilation=3)
+        # self.layer_d1 = nn.Conv2d(dim, dim, 3, stride=1, padding=1, dilation=1)
+        self.layer_d2 = nn.Conv2d(dim, dim, 3, stride=1, padding=2, dilation=2, groups=dim)
+        # self.layer_d3 = nn.Conv2d(dim, dim, 3, stride=1, padding=3, dilation=3)
         self.layer2 = nn.Conv2d(dim, dim, 1)
     
     def forward(self, x):
@@ -165,7 +165,8 @@ class Isotropic(BaseModule):
         super().__init__(cfg)
 
         self.layers = nn.ModuleList([
-            ConvMixerLayer(cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
+            # ConvMixerLayer(cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
+            Layer(cfg.hidden_dim, cfg.drop_rate)
             for _ in range(cfg.num_layers)
         ])
 
