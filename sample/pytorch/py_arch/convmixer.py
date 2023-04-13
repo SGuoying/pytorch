@@ -41,10 +41,10 @@ class DilatedCV(nn.Module):
     def __init__(self, dim):
         super().__init__()
         
-        # self.layer1 = nn.Conv2d(dim, dim, 3, groups=dim, padding=1),
-        self.layer_d1 = nn.Conv2d(dim, dim, 3, stride=1, padding=1, dilation=1),
-        self.layer_d2 = nn.Conv2d(dim, dim, 3, stride=1, padding=2, dilation=2),
-        self.layer_d3 = nn.Conv2d(dim, dim, 3, stride=1, padding=3, dilation=3),
+        # self.layer1 = nn.Conv2d(dim, dim, 3, groups=dim, padding=1)
+        self.layer_d1 = nn.Conv2d(dim, dim, 3, stride=1, padding=1, dilation=1)
+        self.layer_d2 = nn.Conv2d(dim, dim, 3, stride=1, padding=2, dilation=2)
+        self.layer_d3 = nn.Conv2d(dim, dim, 3, stride=1, padding=3, dilation=3)
         self.layer2 = nn.Conv2d(dim, dim, 1)
     
     def forward(self, x):
