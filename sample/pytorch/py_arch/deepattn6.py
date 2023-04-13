@@ -8,8 +8,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops.layers.torch import Rearrange
 
-from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LayerScaler
-from sample.pytorch_lightning.base import BaseModule
+from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LayerScaler, BaseModule
+# from sample.pytorch_lightning.base import BaseModule
 
 
 class Squeeze(nn.Module):
