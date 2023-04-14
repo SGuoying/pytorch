@@ -163,45 +163,22 @@ class Isotropic(BaseModule):
         )
 
         self.cfg = cfg
+        log_prior = torch.zeros(1, cfg.num_classes)
+        self.register_buffer('log_prior', log_prior) 
         
     def forward(self, x):
         x = self.embed(x)
         for layer in self.layers:
             x = x + layer(x)
-        x = self.digup(x)
+            logits = self.digup(x)
+            log_prior = log_bayesian_iteration(log_prior, logits)
         return x
-    
-    def variational_inference(self, input, target, num_samples):
-        # B = logits.size(0)
-        logits = self.forward(input)
-        mean = self.forward(input)
-        log_var = torch.randn_like(mean)
-        # log_var = torch.zeros_like(mean)
-        var = torch.exp(log_var)
-        total_loss = 0
-        for i in range(num_samples):
-            eps = torch.randn_like(mean)
-            sample = mean + eps * torch.sqrt(var)
-            # 计算似然概率
-            likelihood_probs = F.cross_entropy(logits, target)
-            # 计算先验概率
-            prior_probs = Normal(torch.zeros_like(mean), torch.ones_like(var))
-            prior_log_probs = prior_probs.log_prob(sample).sum(-1)
-            # 计算后验概率
-            posterior_probs = Normal(mean, torch.sqrt(var))
-            posterior_log_probs = posterior_probs.log_prob(sample).sum(-1)
-             # 计算 KL 散度
-            kl_divergence = (posterior_log_probs - prior_log_probs).mean()
-            # 计算损失
-            loss = -likelihood_probs + kl_divergence
-            total_loss += loss
-        return total_loss / num_samples
 
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
         logits = self.forward(input)
-        # loss = F.cross_entropy(logits, target)
-        loss = self.variational_inference(input, target, 10)
+        loss = F.cross_entropy(logits, target)
+        # loss = self.variational_inference(input, target, 10)
         self.log(mode + "_loss", loss, prog_bar=True)
         accuracy = (logits.argmax(dim=1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
