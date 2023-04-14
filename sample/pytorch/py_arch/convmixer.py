@@ -171,7 +171,7 @@ class Isotropic(BaseModule):
         x = self.digup(x)
         return x
     
-    def variational_inference(self, input, target, num_samples):
+    def variational_inference(self, logits, target, num_samples):
         B = input.size(0)
         mean = self.forward(input)
         log_var = torch.randn_like(mean)
@@ -182,7 +182,7 @@ class Isotropic(BaseModule):
             eps = torch.randn_like(mean)
             sample = mean + eps * torch.sqrt(var)
             # 计算似然概率
-            likelihood_probs = F.cross_entropy(input, target)
+            likelihood_probs = F.cross_entropy(logits, target)
             # 计算先验概率
             prior_probs = Normal(torch.zeros_like(mean), torch.ones_like(var))
             prior_log_probs = prior_probs.log_prob(sample).sum(-1)
@@ -200,7 +200,7 @@ class Isotropic(BaseModule):
         input, target = batch
         logits = self.forward(input)
         # loss = F.cross_entropy(logits, target)
-        loss = self.variational_inference(input, target, 10)
+        loss = self.variational_inference(logits, target, 10)
         self.log(mode + "_loss", loss, prog_bar=True)
         accuracy = (logits.argmax(dim=1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
