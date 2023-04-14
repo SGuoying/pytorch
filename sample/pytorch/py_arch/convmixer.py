@@ -172,7 +172,7 @@ class Isotropic(BaseModule):
         return x
     
     def variational_inference(self, logits, target, num_samples):
-        B = input.size(0)
+        # B = logits.size(0)
         mean = self.forward(input)
         log_var = torch.randn_like(mean)
         # log_var = torch.zeros_like(mean)
