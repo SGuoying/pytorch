@@ -167,6 +167,8 @@ class Isotropic(BaseModule):
         self.register_buffer('log_prior', log_prior) 
         
     def forward(self, x):
+        batch_size, _, _, _ = x.shape
+        log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
         x = self.embed(x)
         for layer in self.layers:
             x = x + layer(x)
