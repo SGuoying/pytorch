@@ -174,7 +174,7 @@ class Isotropic(BaseModule):
             x = x + layer(x)
             logits = self.digup(x)
             log_prior = log_bayesian_iteration(log_prior, logits)
-        return x
+        return log_prior
 
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
