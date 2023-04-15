@@ -82,8 +82,8 @@ class Block2(nn.Sequential):
 class Columnlayer(nn.Sequential):
     def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
         super().__init__(
-            Attention(hidden_dim),
-            Block2(hidden_dim, kernel_size, drop_rate),
+            Attention(hidden_dim)
+            # Block2(hidden_dim, kernel_size, drop_rate),
             )
 
 @dataclass
