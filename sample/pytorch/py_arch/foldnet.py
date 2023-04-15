@@ -218,6 +218,9 @@ class FoldNetRepeat(FoldNet):
     #     x = self.digup(xs)
     #     return x
     def forward(self, x):
+        batch_size, _, _, _ = x.shape
+        log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
+        
         x = self.embed(x)
         xs = x.repeat(1, self.cfg.fold_num, 1, 1)
         xs = torch.chunk(xs, self.cfg.fold_num, dim = 1)
