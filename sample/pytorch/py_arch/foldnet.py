@@ -52,38 +52,6 @@ class AttnCfg(BaseCfg):
 
     squeeze_factor: int = 4
 
-class ChannelAttention(nn.Module):
-    def __init__(self, dim, ratio=4):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-           
-        self.fc = nn.Sequential(nn.Conv2d(dim, dim // ratio, 1, bias=False),
-                               nn.ReLU(),
-                               nn.Conv2d(dim // ratio, dim, 1, bias=False))
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        avg_out = self.fc(self.avg_pool(x))
-        max_out = self.fc(self.max_pool(x))
-        out = avg_out + max_out
-        return self.sigmoid(out)
-
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=3):
-        super(SpatialAttention, self).__init__()
-        assert kernel_size in (3, 7), 'kernel size must be 3 or 7'
-        padding = 3 if kernel_size == 7 else 1
-
-        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        avg_out = torch.mean(x, dim=1, keepdim=True)
-        max_out, _ = torch.max(x, dim=1, keepdim=True)
-        x = torch.cat([avg_out, max_out], dim=1)
-        x = self.conv1(x)
-        return self.sigmoid(x)
 class LKA(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -98,19 +66,6 @@ class LKA(nn.Module):
         attn = self.conv1(attn)
         return attn * u
     
-class Atten(nn.Sequential):
-    def __init__(self, dim, drop_rate):
-        super().__init__(
-            nn.Conv2d(dim, dim, 1),
-            nn.GELU(), 
-            LKA(dim),
-            nn.BatchNorm2d(dim, eps=7e-5),
-            nn.Dropout(drop_rate),
-            nn.Conv2d(dim, dim, 1),
-            nn.GELU(), 
-            # nn.Dropout(drop_rate),
-        )
-
 class Block2(nn.Sequential):
     def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
         super().__init__(
@@ -208,11 +163,7 @@ class FoldNet(BaseModule):
                 FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.drop_rate, cfg.layer_scaler_init_value)
                 for _ in range(cfg.num_layers)
             ])
-        elif cfg.block == Atten:
-            self.layers = nn.ModuleList([
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.drop_rate)
-                for _ in range(cfg.num_layers)
-            ])
+       
         self.embed = nn.Sequential(
             nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
             nn.GELU(),
@@ -255,16 +206,27 @@ class FoldNetRepeat(FoldNet):
             nn.Flatten(),
             nn.Linear(cfg.hidden_dim * cfg.fold_num, cfg.num_classes)
         )
+        self.log_prior = nn.Parameter(torch.zeros(1, cfg.num_classes))
 
+    # def forward(self, x):
+    #     x = self.embed(x)
+    #     xs = x.repeat(1, self.cfg.fold_num, 1, 1)
+    #     xs = torch.chunk(xs, self.cfg.fold_num, dim = 1)
+    #     for layer in self.layers:
+    #         xs = layer(*xs)
+    #     xs = torch.cat(xs, dim = 1)
+    #     x = self.digup(xs)
+    #     return x
     def forward(self, x):
         x = self.embed(x)
         xs = x.repeat(1, self.cfg.fold_num, 1, 1)
         xs = torch.chunk(xs, self.cfg.fold_num, dim = 1)
         for layer in self.layers:
             xs = layer(*xs)
-        xs = torch.cat(xs, dim = 1)
-        x = self.digup(xs)
-        return x
+            xs = torch.cat(xs, dim = 1)
+            logits = self.digup(xs)
+            log_prior = log_bayesian_iteration(log_prior, logits)
+        return log_prior
 
 
 class FoldNetRepeat2(FoldNet):
