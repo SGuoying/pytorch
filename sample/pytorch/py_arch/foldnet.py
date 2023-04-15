@@ -177,15 +177,17 @@ class FoldNet(BaseModule):
         )
 
         self.cfg = cfg
+        self.log_prior = nn.Parameter(torch.zeros(1, cfg.num_classes))
 
     def forward(self, x):
         x = self.embed(x)
         xs = [x for _ in range(self.cfg.fold_num)]
         for layer in self.layers:
             xs= layer(*xs)
-        x = xs[-1]
-        x = self.digup(x)
-        return x
+            x = xs[-1]
+            logits = self.digup(x)
+            log_prior = log_bayesian_iteration(log_prior, logits)
+        return log_prior
 
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
@@ -220,7 +222,7 @@ class FoldNetRepeat(FoldNet):
     def forward(self, x):
         batch_size, _, _, _ = x.shape
         log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
-        
+
         x = self.embed(x)
         xs = x.repeat(1, self.cfg.fold_num, 1, 1)
         xs = torch.chunk(xs, self.cfg.fold_num, dim = 1)
