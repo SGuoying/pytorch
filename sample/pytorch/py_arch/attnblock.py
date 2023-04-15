@@ -85,14 +85,24 @@ class Block2(nn.Module):
         x = self.layers(x)
         x = x + skip
         return x
-    
-class Columnlayer(nn.Sequential):
-    def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
-        super().__init__(
-            Attention(hidden_dim),
-            Block2(hidden_dim, kernel_size, drop_rate),
-            )
 
+class SE(nn.Module):
+    def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
+        super().__init__()
+        squeeze_c = hidden_dim // squeeze_factor
+        self.squeeze = nn.AdaptiveAvgPool2d((1, 1))
+        self.excitation = nn.Sequential(
+			nn.Conv2d(hidden_dim, squeeze_c, 1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(squeeze_c , hidden_dim, 1),
+			nn.Sigmoid())
+        
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        scale = self.squeeze(x)
+        scale = self.excitation(scale)
+        return x * scale 
+   
 @dataclass
 class AttnCfg(BaseCfg):
     hidden_dim: int = 256
@@ -101,6 +111,7 @@ class AttnCfg(BaseCfg):
     num_classes: int = 200
 
     drop_rate: float = 0.1 
+    squeeze_factor: int = 4
 
 
 class Attn(BaseModule):
@@ -108,17 +119,19 @@ class Attn(BaseModule):
         super().__init__(cfg)
 
         self.layers = nn.Sequential(*[
+            nn.Sequential(
             Residual(nn.Sequential(
-            Residual(nn.Sequential(nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, padding=2, groups=cfg.hidden_dim),
-                                   nn.GELU(),
-                                   nn.BatchNorm2d(cfg.hidden_dim))),
-            Residual(nn.Sequential(nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, stride=1, padding="same", groups=cfg.hidden_dim, dilation=2),
-                                           nn.GELU(),
-                                           nn.BatchNorm2d(cfg.hidden_dim))),
+            nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, padding="same", groups=cfg.hidden_dim),
+            nn.GELU(),
+            nn.BatchNorm2d(cfg.hidden_dim)
+            )),
+            nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
+            nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, stride=1, padding="same", groups=cfg.hidden_dim, dilation=2),         
             nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
             nn.Dropout(cfg.drop_rate),
-            nn.BatchNorm2d(cfg.hidden_dim)
-            )) for _ in range(cfg.num_layers)
+            nn.BatchNorm2d(cfg.hidden_dim),
+            
+            ) for _ in range(cfg.num_layers)
         ])
 
         self.embed = nn.Sequential(
@@ -127,13 +140,13 @@ class Attn(BaseModule):
             nn.BatchNorm2d(cfg.hidden_dim, eps=7e-5),  # eps>6.1e-5 to avoid nan in half precision
         )
         
-        # self.digup = nn.Sequential(
-        #     nn.AdaptiveAvgPool2d((1,1)),
-        #     nn.Flatten(),
-        #     nn.Linear(cfg.hidden_dim, cfg.num_classes)
-        # )
-        self.pooling = AttentionPooling(cfg.hidden_dim)
-        self.fc = nn.Linear(cfg.hidden_dim, cfg.num_classes)
+        self.digup = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1,1)),
+            nn.Flatten(),
+            nn.Linear(cfg.hidden_dim, cfg.num_classes)
+        )
+        # self.pooling = AttentionPooling(cfg.hidden_dim)
+        # self.fc = nn.Linear(cfg.hidden_dim, cfg.num_classes)
         self.cfg = cfg
 
     def forward(self, x):
@@ -141,8 +154,7 @@ class Attn(BaseModule):
         # for layer in self.layers:
         #     x = layer(x)
         x = self.layers(x)
-        x = self.pooling(x)
-        x = self.fc(x)
+        x = self.digup(x)
         return x
     
     def _step(self, batch, mode="train"):  # or "val"
