@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops.layers.torch import Rearrange
 
-from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LayerScaler, BaseModule
+from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LayerScaler, BaseModule, Residual
 # from sample.pytorch_lightning.base import BaseModule
 
 
@@ -26,9 +26,16 @@ class AttentionPooling(nn.Module):
 class LKA(nn.Module):
     def __init__(self, dim):
         super().__init__()
-        self.conv0 = nn.Conv2d(dim, dim, 3, padding=1, groups=dim)
-        self.conv_spatial = nn.Conv2d(dim, dim, 3, stride=1, padding=2, groups=dim, dilation=2)
-        self.conv1 = nn.Conv2d(dim, dim, 1)
+        self.conv0 = nn.Sequential(nn.Conv2d(dim, dim, 5, padding=2, groups=dim),
+                                   nn.GELU(),
+                                   nn.BatchNorm2d(dim))
+        self.conv_spatial =  nn.Sequential(nn.Conv2d(dim, dim, 5, stride=1, padding="same", groups=dim, dilation=2),
+                                           nn.GELU(),
+                                           nn.BatchNorm2d(dim))
+                                           
+        self.conv1 = nn.Sequential( nn.Conv2d(dim, dim, 1),
+                                    nn.GELU(),
+                                    nn.BatchNorm2d(dim))
 
     def forward(self, x):
         u = x.clone()
@@ -101,7 +108,8 @@ class Attn(BaseModule):
         super().__init__(cfg)
 
         self.layers = nn.ModuleList([
-            Columnlayer(cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
+            # Columnlayer(cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
+            LKA(cfg.hidden_dim)
             for _ in range(cfg.num_layers)
         ])
 
