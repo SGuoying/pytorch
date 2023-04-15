@@ -35,7 +35,7 @@ class LKA(nn.Module):
         attn = self.conv0(x)
         attn = self.conv_spatial(attn)
         attn = self.conv1(attn)
-        return attn * u
+        return attn + u
 class Attention(nn.Module):
     def __init__(self, d_model):
         super().__init__()
@@ -54,7 +54,7 @@ class Attention(nn.Module):
         x = x + shorcut
         return x
 
-class Block2(nn.Sequential):
+class Block2(nn.Module):
     def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
         super().__init__()
 
@@ -82,8 +82,8 @@ class Block2(nn.Sequential):
 class Columnlayer(nn.Sequential):
     def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
         super().__init__(
-            Attention(hidden_dim)
-            # Block2(hidden_dim, kernel_size, drop_rate),
+            Attention(hidden_dim),
+            Block2(hidden_dim, kernel_size, drop_rate),
             )
 
 @dataclass
