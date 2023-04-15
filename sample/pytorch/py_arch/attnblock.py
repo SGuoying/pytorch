@@ -26,8 +26,8 @@ class AttentionPooling(nn.Module):
 class LKA(nn.Module):
     def __init__(self, dim):
         super().__init__()
-        self.conv0 = nn.Conv2d(dim, dim, 5, padding=2, groups=dim)
-        self.conv_spatial = nn.Conv2d(dim, dim, 7, stride=1, padding=9, groups=dim, dilation=3)
+        self.conv0 = nn.Conv2d(dim, dim, 3, padding=1, groups=dim)
+        self.conv_spatial = nn.Conv2d(dim, dim, 3, stride=1, padding=2, groups=dim, dilation=2)
         self.conv1 = nn.Conv2d(dim, dim, 1)
 
     def forward(self, x):
@@ -62,12 +62,14 @@ class Block2(nn.Sequential):
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size, groups=hidden_dim, padding="same"),
             nn.GELU(),
             # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
-            nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
+            # nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
+            nn.BatchNorm2d(hidden_dim),
             nn.Dropout(drop_rate),
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size=1),
             nn.GELU(),
             # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
-            nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
+            # nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
+            nn.BatchNorm2d(hidden_dim),
             nn.Dropout(drop_rate),
             )
         
