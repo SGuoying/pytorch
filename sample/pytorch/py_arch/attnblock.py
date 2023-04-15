@@ -113,7 +113,22 @@ class AttnCfg(BaseCfg):
     drop_rate: float = 0.1 
     squeeze_factor: int = 4
 
+class attn(nn.Module):
+    def __init__(self, hidden_dim, kernel_size):
+        super().__init__()
+        self.layer1 =  nn.Conv2d(hidden_dim, hidden_dim, 3, stride=1, padding="same", groups=hidden_dim, dilation=2),         
+        self.layer2 = nn.Conv2d(hidden_dim, hidden_dim, 5, padding=2, groups=hidden_dim)  
+        self.softmax = nn.Softmax(dim=1)
 
+    def forward(self, x):
+        x1 = self.layer1(x)
+        x2 = self.layer2(x)
+        attn_weight = self.softmax(x2)
+
+        x = torch.mul(x1, attn_weight)
+        return x 
+        
+        # self.softmax = nn.Softmax(dim=1)
 class Attn(BaseModule):
     def __init__(self, cfg: AttnCfg):
         super().__init__(cfg)
@@ -125,12 +140,10 @@ class Attn(BaseModule):
             nn.GELU(),
             nn.BatchNorm2d(cfg.hidden_dim)
             )),
-            nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
-            nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, stride=1, padding="same", groups=cfg.hidden_dim, dilation=2),         
-            nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
-            nn.Dropout(cfg.drop_rate),
-            nn.BatchNorm2d(cfg.hidden_dim),
             
+            nn.GELU(),
+            nn.BatchNorm2d(cfg.hidden_dim),
+
             ) for _ in range(cfg.num_layers)
         ])
 

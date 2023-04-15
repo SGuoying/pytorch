@@ -21,6 +21,21 @@ class ConvMixerCfg(BaseCfg):
     squeeze_factor: int = 4
     drop_rate: float = 0.1
 
+class attn(nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.layer1 =  nn.Conv2d(hidden_dim, hidden_dim, 3, stride=1, padding="same", groups=hidden_dim, dilation=2),         
+        self.layer2 = nn.Conv2d(hidden_dim, hidden_dim, 5, padding=2, groups=hidden_dim)  
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        x1 = self.layer1(x)
+        x2 = self.layer2(x)
+        attn_weight = self.softmax(x2)
+
+        x = torch.mul(x1, attn_weight)
+        return x 
+    
 class SE(nn.Module):
     def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
         super().__init__()
@@ -48,7 +63,8 @@ class ConvMixer(BaseModule):
                     nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, groups=cfg.hidden_dim, padding="same"),
                     nn.GELU(),
                     nn.BatchNorm2d(cfg.hidden_dim),
-                )),
+                ),
+                attn(cfg.hidden_dim)),
                 nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
                 nn.GELU(),
                 nn.BatchNorm2d(cfg.hidden_dim), 
