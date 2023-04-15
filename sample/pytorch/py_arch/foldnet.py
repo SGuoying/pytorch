@@ -278,23 +278,3 @@ class FoldNetRepeat2(FoldNet):
         x = self.digup(x)
         return x
     
-class FoldNetbayes(FoldNet):
-    def __init__(self, cfg:FoldNetCfg):
-        super().__init__(cfg)
-        
-        log_prior = torch.zeros(1, cfg.num_classes)
-        self.register_buffer('log_prior', log_prior)
-
-    def forward(self, x):
-        batch_size, _, _, _ = x.shape
-        log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
-
-        x = self.embed(x)
-        xs = x.repeat(1, self.cfg.fold_num, 1, 1)
-        xs = torch.chunk(xs, self.cfg.fold_num, dim = 1)
-        for layer in self.layers:
-            xs = layer(*xs)
-            xs = torch.cat(xs, dim = 1)
-            logits = self.digup(xs)
-            log_prior = log_bayesian_iteration(log_prior, logits)
-        return log_prior

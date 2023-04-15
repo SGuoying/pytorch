@@ -76,3 +76,46 @@ class AttnLayer(nn.Module):
         x_new = Rearrange('b heads head_dim v w -> b (heads head_dim) v w')(x_new)
         # x_new shape (batch_size, hidden_dim, height, width)
         return x_new, all_squeezed
+    
+
+class AttentionPooling(nn.Module):
+    def __init__(self, in_dim):
+        super().__init__()
+        self.cls_vec = nn.Parameter(torch.randn(in_dim))
+        self.fc = nn.Linear(in_dim, in_dim)
+        self.softmax = nn.Softmax(-1)
+
+    def forward(self, x):
+        weights = torch.matmul(x.view(-1, x.shape[1]), self.cls_vec)
+        weights = self.softmax(weights.view(x.shape[0], -1))
+        x = torch.bmm(x.view(x.shape[0], x.shape[1], -1), weights.unsqueeze(-1)).squeeze()
+        x = x + self.cls_vec
+        x = self.fc(x)
+        x = x + self.cls_vec
+        return x
+    
+
+class Block2(nn.Sequential):
+    def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
+        super().__init__()
+
+        self.layers = nn.Sequential(
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size, groups=hidden_dim, padding="same"),
+            nn.GELU(),
+            # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
+            nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
+            nn.Dropout(drop_rate),
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size=1),
+            nn.GELU(),
+            # GroupNorm with num_groups=1 is the same as LayerNorm but works for 2D data
+            nn.GroupNorm(num_groups=1, num_channels=hidden_dim),
+            nn.Dropout(drop_rate),
+            )
+        
+    def forward(self, x):
+        skip = x
+        x = self.layers(x)
+        x = x + skip
+        return x
+            
+        
