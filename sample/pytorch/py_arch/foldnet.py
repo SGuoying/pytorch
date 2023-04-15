@@ -193,7 +193,7 @@ class FoldNet(BaseModule):
         
         if cfg.block == ConvMixerLayer or cfg.block == Block2:
             self.layers = nn.ModuleList([
-                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate, cfg.squeeze_factor)
+                FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate )   #)
                 for _ in range(cfg.num_layers)
             ])         
         elif cfg.block == BottleNeckBlock:
