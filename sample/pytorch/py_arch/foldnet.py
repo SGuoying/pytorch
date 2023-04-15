@@ -191,7 +191,7 @@ class FoldNet(BaseModule):
     def __init__(self, cfg:FoldNetCfg):
         super().__init__(cfg)
         
-        if cfg.block == ConvMixerLayer or cfg.block == Block3:
+        if cfg.block == ConvMixerLayer or cfg.block == Block2:
             self.layers = nn.ModuleList([
                 FoldBlock(cfg.fold_num, cfg.block, cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate, cfg.squeeze_factor)
                 for _ in range(cfg.num_layers)
