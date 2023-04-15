@@ -107,10 +107,18 @@ class Attn(BaseModule):
     def __init__(self, cfg: AttnCfg):
         super().__init__(cfg)
 
-        self.layers = nn.ModuleList([
-            # Columnlayer(cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
-            LKA(cfg.hidden_dim)
-            for _ in range(cfg.num_layers)
+        self.layers = nn.Sequential(*[
+            Residual(nn.Sequential(
+            Residual(nn.Sequential(nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, padding=2, groups=cfg.hidden_dim),
+                                   nn.GELU(),
+                                   nn.BatchNorm2d(cfg.hidden_dim))),
+            Residual(nn.Sequential(nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, stride=1, padding="same", groups=cfg.hidden_dim, dilation=2),
+                                           nn.GELU(),
+                                           nn.BatchNorm2d(cfg.hidden_dim))),
+            nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, 1),
+            nn.Dropout(cfg.drop_rate),
+            nn.BatchNorm2d(cfg.hidden_dim)
+            )) for _ in range(cfg.num_layers)
         ])
 
         self.embed = nn.Sequential(
@@ -130,8 +138,9 @@ class Attn(BaseModule):
 
     def forward(self, x):
         x = self.embed(x)
-        for layer in self.layers:
-            x = layer(x)
+        # for layer in self.layers:
+        #     x = layer(x)
+        x = self.layers(x)
         x = self.pooling(x)
         x = self.fc(x)
         return x
