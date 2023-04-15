@@ -93,7 +93,7 @@ class AttnCfg(BaseCfg):
     patch_size: int = 2
     num_classes: int = 200
 
-    drop_rate: float = 0. 
+    drop_rate: float = 0.1 
 
 
 class Attn(BaseModule):
