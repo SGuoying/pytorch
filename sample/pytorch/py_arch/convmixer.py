@@ -60,7 +60,7 @@ class ConvMixer(BaseModule):
                     nn.BatchNorm2d(cfg.hidden_dim),
                 )),
                 # attn(cfg.hidden_dim),
-                LKA(cfg.hidden_dim),
+                # LKA(cfg.hidden_dim),
                 nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
                 nn.GELU(),
                 nn.BatchNorm2d(cfg.hidden_dim), 
@@ -208,19 +208,19 @@ class BayesConvMixer(ConvMixer):
 class BayesConvMixer2(ConvMixer):
     def __init__(self, cfg:ConvMixerCfg):
         super().__init__(cfg)
-        # self.layers = nn.Sequential(*[
-        #     nn.Sequential(
-        #         Residual(nn.Sequential(
-        #             nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, groups=cfg.hidden_dim, padding="same"),
-        #             nn.GELU(),
-        #             nn.BatchNorm2d(cfg.hidden_dim)
-        #         )),
-        #         SE(cfg.hidden_dim, cfg.squeeze_factor),
-        #         nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
-        #         nn.GELU(),
-        #         nn.BatchNorm2d(cfg.hidden_dim)
-        #     ) for _ in range(cfg.num_layers)
-        # ])
+        self.layers = nn.Sequential(*[
+            nn.Sequential(
+                Residual(nn.Sequential(
+                    nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, groups=cfg.hidden_dim, padding="same"),
+                    nn.GELU(),
+                    nn.BatchNorm2d(cfg.hidden_dim)
+                )),
+                # SE(cfg.hidden_dim, cfg.squeeze_factor),
+                nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
+                nn.GELU(),
+                nn.BatchNorm2d(cfg.hidden_dim)
+            ) for _ in range(cfg.num_layers)
+        ])
 
         # log_prior = torch.zeros(1, cfg.num_classes)
         # self.register_buffer('log_prior', log_prior) 
