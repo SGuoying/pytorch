@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops.layers.torch import Rearrange
 
-from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LayerScaler, BaseModule
+from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LKALayer, LayerScaler, BaseModule
 from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
 # from sample.pytorch_lightning.base import BaseModule
 
@@ -88,7 +88,8 @@ class Layer(nn.Module):
     ):
         super().__init__()
         self.attn_layer = AttnLayer(hidden_dim, query_idx, temperature, init_scale)
-        self.block = ConvMixerLayer(hidden_dim, kernel_size)
+        # self.block = ConvMixerLayer(hidden_dim, kernel_size)
+        self.block = LKALayer(hidden_dim, kernel_size)
 
     def forward(self, xs, all_squeezed):
         x_new, all_squeezed = self.attn_layer(xs, all_squeezed)
@@ -136,28 +137,28 @@ class DeepAttn(BaseModule):
 
         self.cfg = cfg
         self.log_prior = nn.Parameter(torch.zeros(1, cfg.num_classes))
-    # def forward(self, x: torch.Tensor):
-    #     x = self.embed(x)
-    #     xs = x.unsqueeze(0)
-    #     all_squeezed = torch.zeros(0, device=x.device)
-    #     for layer in self.layers:
-    #         xs, all_squeezed = layer(xs, all_squeezed)
-    #     x, all_squeezed = self.final_attn(xs, all_squeezed)
-    #     x = self.digup(x)
-    #     return x
     def forward(self, x: torch.Tensor):
-        batch_size, _, _, _ = x.shape
-        log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
-        
         x = self.embed(x)
         xs = x.unsqueeze(0)
         all_squeezed = torch.zeros(0, device=x.device)
         for layer in self.layers:
             xs, all_squeezed = layer(xs, all_squeezed)
-            x, all_squeezed = self.final_attn(xs, all_squeezed)
-            logits = self.digup(x)
-            log_prior = log_bayesian_iteration(log_prior, logits)
-        return log_prior
+        x, all_squeezed = self.final_attn(xs, all_squeezed)
+        x = self.digup(x)
+        return x
+    # def forward(self, x: torch.Tensor):
+    #     batch_size, _, _, _ = x.shape
+    #     log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
+        
+    #     x = self.embed(x)
+    #     xs = x.unsqueeze(0)
+    #     all_squeezed = torch.zeros(0, device=x.device)
+    #     for layer in self.layers:
+    #         xs, all_squeezed = layer(xs, all_squeezed)
+    #         x, all_squeezed = self.final_attn(xs, all_squeezed)
+    #         logits = self.digup(x)
+    #         log_prior = log_bayesian_iteration(log_prior, logits)
+    #     return log_prior
 
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
