@@ -393,7 +393,7 @@ class ResNet(BaseModule):
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
-    def _forward_impl(self, x):
+    def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -404,15 +404,11 @@ class ResNet(BaseModule):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
 
         return x
-    
-    def forward(self, x):
-        return self._forward_impl(x)
     
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
@@ -469,7 +465,7 @@ class BayesResNet(ResNet):
         self.register_buffer('log_prior', log_prior)
         self.logits_bias = Parameter(torch.zeros(1, cfg.num_classes))
 
-    def _forward_impl(self, x: Tensor) -> Tensor:
+    def forward(self, x):
         batch_size, _, _, _ = x.shape
         log_prior = self.log_prior.repeat(batch_size, 1)
 
@@ -523,7 +519,7 @@ class BayesResNet2(ResNet):
         self.register_buffer('log_prior', log_prior)
         self.logits_bias = Parameter(torch.zeros(1, cfg.num_classes))
 
-    def _forward_impl(self, x: Tensor) -> Tensor:
+    def forward(self, x):
         batch_size, _, _, _ = x.shape
         log_prior = self.log_prior.repeat(batch_size, 1)
 
