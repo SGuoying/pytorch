@@ -385,9 +385,9 @@ class ResNet(BaseModule):
         self.layer3 = self._make_layer(cfg.block, 256, cfg.blocks_num[2], stride=2)   # conv4   14x14
         self.layer4 = self._make_layer(cfg.block, 512, cfg.blocks_num[3], stride=2)   # conv5   7x7
 
-        if self.include_top:
-            self.avgpool = nn.AdaptiveAvgPool2d((1, 1))  # output size = (1, 1)
-            self.fc = nn.Linear(512 * cfg.block.expansion, cfg.num_classes)
+        
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))  # output size = (1, 1)
+        self.fc = nn.Linear(512 * cfg.block.expansion, cfg.num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -404,10 +404,10 @@ class ResNet(BaseModule):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        if self.include_top:
-            x = self.avgpool(x)
-            x = torch.flatten(x, 1)
-            x = self.fc(x)
+        
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
 
         return x
     
