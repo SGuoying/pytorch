@@ -352,7 +352,7 @@ from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
 @dataclass
 class ResNetCfg(BaseCfg):
     block: nn.Module = BasicBlock
-    blocks_num: List = [2, 2, 2, 2]
+    blocks_num = [2, 2, 2, 2]
     num_classes: int = 200
     include_top: bool = True
     groups: int = 1
