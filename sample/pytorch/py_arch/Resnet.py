@@ -413,6 +413,15 @@ class ResNet(BaseModule):
     
     def forward(self, x):
         return self._forward_impl(x)
+    
+    def _step(self, batch, mode="train"):  # or "val"
+        input, target = batch
+        logits = self.forward(input)
+        loss = F.cross_entropy(logits, target)
+        self.log(mode + "_loss", loss, prog_bar=True)
+        accuracy = (logits.argmax(dim=1) == target).float().mean()
+        self.log(mode + "_accuracy", accuracy, prog_bar=True)
+        return loss
 
     def _make_layer(self, block, channel, block_num, stride=1):  # channel 为每个block中第一层卷积层个数
         downsample = None
@@ -483,6 +492,15 @@ class BayesResNet(ResNet):
                 # log_prior = log_prior - torch.mean(log_prior, dim=-1, keepdim=True) + self.logits_bias
                 # log_prior = F.log_softmax(log_prior, dim=-1)
         return log_prior   
+    
+    def _step(self, batch, mode="train"):  # or "val"
+        input, target = batch
+        logits = self.forward(input)
+        loss = F.cross_entropy(logits, target)
+        self.log(mode + "_loss", loss, prog_bar=True)
+        accuracy = (logits.argmax(dim=1) == target).float().mean()
+        self.log(mode + "_accuracy", accuracy, prog_bar=True)
+        return loss
 
     
 class BayesResNet2(ResNet):
@@ -527,3 +545,12 @@ class BayesResNet2(ResNet):
                 log_prior = log_prior - torch.mean(log_prior, dim=-1, keepdim=True) + self.logits_bias
                 log_prior = F.log_softmax(log_prior, dim=-1)
         return log_prior
+    
+    def _step(self, batch, mode="train"):  # or "val"
+        input, target = batch
+        logits = self.forward(input)
+        loss = F.cross_entropy(logits, target)
+        self.log(mode + "_loss", loss, prog_bar=True)
+        accuracy = (logits.argmax(dim=1) == target).float().mean()
+        self.log(mode + "_accuracy", accuracy, prog_bar=True)
+        return loss
