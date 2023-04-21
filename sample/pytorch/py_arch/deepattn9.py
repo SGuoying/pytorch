@@ -9,7 +9,7 @@ from einops.layers.torch import Rearrange
 
 # from sunyata.pytorch.arch.base import BaseCfg, ConvMixerLayer, LayerScaler
 # from sunyata.pytorch_lightning.base import BaseModule
-from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LayerScaler, BaseModule
+from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, LKALayer, LayerScaler, BaseModule
 # from sample.pytorch_lightning.base import BaseModule
 
 
@@ -101,7 +101,8 @@ class Layer(nn.Module):
     ):
         super().__init__()
         self.attn_layer = AttnLayer(hidden_dim, num_heads, query_idx, temperature, init_scale)
-        self.block = ConvMixerLayer(hidden_dim, kernel_size)
+        # self.block = ConvMixerLayer(hidden_dim, kernel_size)
+        self.block = LKALayer(hidden_dim, kernel_size)
 
     def forward(self, xs, all_squeezed):
         x_new, all_squeezed = self.attn_layer(xs, all_squeezed)

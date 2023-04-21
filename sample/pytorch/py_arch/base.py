@@ -143,15 +143,17 @@ class ConvMixerLayer(nn.Sequential):
             StochasticDepth(drop_rate, 'row') if drop_rate > 0. else nn.Identity(),
         )
 class LKALayer(nn.Sequential):
-    def __init__(self, hidden_dim: int, kernel_size: int):
+    def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
         super().__init__(
-            nn.Conv2d(hidden_dim, hidden_dim, 3, padding=1, groups=hidden_dim),
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size, padding="same", groups=hidden_dim),
             nn.GELU(),
             nn.BatchNorm2d(hidden_dim, eps=7e-5),
+            nn.Conv2d(hidden_dim, hidden_dim, 1),
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size, stride=1, padding="same", groups=hidden_dim, dilation=2),
             nn.Conv2d(hidden_dim, hidden_dim, 1),
             nn.GELU(),
             nn.BatchNorm2d(hidden_dim, eps=7e-5),
+            StochasticDepth(drop_rate, 'row') if drop_rate > 0. else nn.Identity(),
         )
 
 class Layer(nn.Sequential):
