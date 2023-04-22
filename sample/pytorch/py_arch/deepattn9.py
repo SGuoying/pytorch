@@ -93,7 +93,7 @@ class AttnLayer(nn.Module):
     def forward(self, xs, all_squeezed):
         # xs shape (current_depth, batch_size, hidden_dim, height, width)
         # squeezed = self.squeeze(xs[-1]).unsqueeze(0)
-        squeezed = self.squeeze_se(xs(-1)).unsqueeze(0)
+        squeezed = self.squeeze_se(xs[-1]).unsqueeze(0)
         all_squeezed = torch.cat([all_squeezed, squeezed])
         # all_squeezed shape (current_depth, batch_size, hidden_dim)
         query = all_squeezed[self.query_idx,:,:]
