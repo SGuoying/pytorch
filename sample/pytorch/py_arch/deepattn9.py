@@ -122,8 +122,8 @@ class Layer(nn.Module):
     ):
         super().__init__()
         self.attn_layer = AttnLayer(hidden_dim, num_heads, query_idx, temperature, init_scale)
-        self.block = nn.Sequential(ConvMixerLayer(hidden_dim, kernel_size),
-                                   SE(hidden_dim))
+        self.block = ConvMixerLayer(hidden_dim, kernel_size)
+                                   
         # self.block = LKALayer(hidden_dim, kernel_size)
 
     def forward(self, xs, all_squeezed):
