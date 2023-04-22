@@ -33,7 +33,22 @@ class Squeeze(nn.Module):
         # squeezed shape (batch_size, hidden_dim)
         squeezed = squeezed + self.shift
         return squeezed
-
+class SE(nn.Module):
+    def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
+        super().__init__()
+        squeeze_c = hidden_dim // squeeze_factor
+        self.squeeze = nn.AdaptiveAvgPool2d((1, 1))
+        self.excitation = nn.Sequential(
+			nn.Conv2d(hidden_dim, squeeze_c, 1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(squeeze_c , hidden_dim, 1),
+			nn.Sigmoid())
+        
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        scale = self.squeeze(x)
+        scale = self.excitation(scale)
+        return x * scale
 
 class Attn(nn.Module):
     def __init__(
@@ -65,17 +80,20 @@ class AttnLayer(nn.Module):
         query_idx: int = -1,
         temperature: float = 1.,
         init_scale: float = 1.,
+        squeeze_factor: int = 4
     ):
         super().__init__()
         assert hidden_dim % num_heads == 0
         self.squeeze = Squeeze(hidden_dim, init_scale)
+        self.squeeze_se = SE(hidden_dim, squeeze_factor)
         self.attn = Attn(num_heads, temperature)
         self.num_heads = num_heads
         self.query_idx = query_idx
 
     def forward(self, xs, all_squeezed):
         # xs shape (current_depth, batch_size, hidden_dim, height, width)
-        squeezed = self.squeeze(xs[-1]).unsqueeze(0)
+        # squeezed = self.squeeze(xs[-1]).unsqueeze(0)
+        squeezed = self.squeeze_se(xs(-1)).unsqueeze(0)
         all_squeezed = torch.cat([all_squeezed, squeezed])
         # all_squeezed shape (current_depth, batch_size, hidden_dim)
         query = all_squeezed[self.query_idx,:,:]
@@ -101,8 +119,8 @@ class Layer(nn.Module):
     ):
         super().__init__()
         self.attn_layer = AttnLayer(hidden_dim, num_heads, query_idx, temperature, init_scale)
-        # self.block = ConvMixerLayer(hidden_dim, kernel_size)
-        self.block = LKALayer(hidden_dim, kernel_size)
+        self.block = ConvMixerLayer(hidden_dim, kernel_size)
+        # self.block = LKALayer(hidden_dim, kernel_size)
 
     def forward(self, xs, all_squeezed):
         x_new, all_squeezed = self.attn_layer(xs, all_squeezed)
@@ -124,6 +142,8 @@ class DeepAttnCfg(BaseCfg):
     query_idx: int = -1   
     temperature: float = 1.
     init_scale: float = 1.
+
+    squeeze_factor: int = 4
 
 
 class DeepAttn(BaseModule):
