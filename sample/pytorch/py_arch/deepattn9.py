@@ -33,8 +33,12 @@ class Squeeze(nn.Module):
         # squeezed shape (batch_size, hidden_dim)
         squeezed = squeezed + self.shift
         return squeezed
+    
+    
 class SE(nn.Module):
-    def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
+    def __init__(self, 
+                 hidden_dim: int, 
+                 squeeze_factor: int = 4):
         super().__init__()
         squeeze_c = hidden_dim // squeeze_factor
         self.squeeze = nn.AdaptiveAvgPool2d((1, 1))
@@ -43,12 +47,13 @@ class SE(nn.Module):
 			nn.ReLU(inplace=True),
 			nn.Conv2d(squeeze_c , hidden_dim, 1),
 			nn.Sigmoid())
-        
+        self.flaten = nn.Flatten()
     def forward(self, x):
         b, c, _, _ = x.size()
         scale = self.squeeze(x)
         scale = self.excitation(scale)
-        return x * scale
+        squeezed = x * scale
+        return self.flaten(squeezed)
 
 class Attn(nn.Module):
     def __init__(
