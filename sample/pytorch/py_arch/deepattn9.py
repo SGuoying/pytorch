@@ -20,7 +20,12 @@ class Squeeze(nn.Module):
         init_scale: float = 1.,
     ):
         super().__init__()
-        self.squeeze = nn.Sequential(
+        self.squeeze2 = nn.Sequential(
+            nn.AdaptiveMaxPool2d((1, 1)),
+            nn.Flatten(),
+            LayerScaler(hidden_dim, init_scale), 
+        )
+        self.squeeze1 = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
             LayerScaler(hidden_dim, init_scale),
@@ -29,9 +34,11 @@ class Squeeze(nn.Module):
 
     def forward(self, x):
         # x shape (batch_size, hidden_dim, height, weight)
-        squeezed = self.squeeze(x)
+        squeezed = self.squeeze1(x)
+        squeezed_max = self.squeeze2(x)
         # squeezed shape (batch_size, hidden_dim)
-        squeezed = squeezed + self.shift
+        # squeezed = squeezed + self.shift
+        squeezed = squeezed + squeezed_max
         return squeezed
     
     
