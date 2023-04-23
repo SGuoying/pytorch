@@ -84,12 +84,10 @@ class AttnLayer(nn.Module):
         query_idx: int = -1,
         temperature: float = 1.,
         init_scale: float = 1.,
-        squeeze_factor: int = 4
     ):
         super().__init__()
         assert hidden_dim % num_heads == 0
         self.squeeze = Squeeze(hidden_dim, init_scale)
-        # self.squeeze_se = SE(hidden_dim, squeeze_factor)
         self.attn = Attn(num_heads, temperature)
         self.num_heads = num_heads
         self.query_idx = query_idx
@@ -122,8 +120,7 @@ class Layer(nn.Module):
     ):
         super().__init__()
         self.attn_layer = AttnLayer(hidden_dim, num_heads, query_idx, temperature, init_scale)
-        # self.block = ConvMixerLayer(hidden_dim, kernel_size)
-                                   
+        # self.block = ConvMixerLayer(hidden_dim, kernel_size)    
         self.block = LKALayer(hidden_dim, kernel_size)
 
     def forward(self, xs, all_squeezed):

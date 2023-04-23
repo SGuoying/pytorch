@@ -147,7 +147,7 @@ class LKALayer(nn.Sequential):
         super().__init__(
             nn.Conv2d(hidden_dim, hidden_dim, 1),
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size, padding="same", groups=hidden_dim),
-            nn.Conv2d(hidden_dim, hidden_dim, 3, stride=1, padding=1, groups=hidden_dim, dilation=2),
+            nn.Conv2d(hidden_dim, hidden_dim, 3, stride=1, padding="same", groups=hidden_dim, dilation=2),
             nn.GELU(),
             nn.BatchNorm2d(hidden_dim, eps=7e-5),
             nn.Conv2d(hidden_dim, hidden_dim, 1),
