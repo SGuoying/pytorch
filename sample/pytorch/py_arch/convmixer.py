@@ -215,7 +215,7 @@ class BayesConvMixer2(ConvMixer):
                     nn.GELU(),
                     nn.BatchNorm2d(cfg.hidden_dim)
                 )),
-                # SE(cfg.hidden_dim, cfg.squeeze_factor),
+                SE(cfg.hidden_dim, cfg.squeeze_factor),
                 nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
                 nn.GELU(),
                 nn.BatchNorm2d(cfg.hidden_dim)
