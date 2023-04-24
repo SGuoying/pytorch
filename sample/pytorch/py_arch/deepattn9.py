@@ -31,6 +31,7 @@ class Squeeze(nn.Module):
             LayerScaler(hidden_dim, init_scale),
         )
         self.shift = nn.Parameter(init_scale * torch.rand(hidden_dim))
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         # x shape (batch_size, hidden_dim, height, weight)
@@ -39,6 +40,7 @@ class Squeeze(nn.Module):
         # squeezed shape (batch_size, hidden_dim)
         # squeezed = squeezed + self.shift
         squeezed = squeezed + squeezed_max
+        squeezed = self.sigmoid(squeezed)
         return squeezed
     
     
