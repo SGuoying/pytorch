@@ -26,9 +26,17 @@ class Squeeze(nn.Module):
             LayerScaler(hidden_dim, init_scale),
         )
 
+        self.squeeze_max = nn.Sequential(
+            nn.AdaptiveMaxPool2d((1, 1)),
+            nn.Flatten(),
+            LayerScaler(hidden_dim, init_scale),
+        )
+        self.sigmoid = nn.Sigmoid()
+
     def forward(self, x):
         # x shape (batch_size, hidden_dim, height, weight)
-        squeezed = self.squeeze(x)
+        squeezed = self.squeeze(x) + self.squeeze_max(x)
+        squeezed = self.sigmoid(squeezed)
         return squeezed
 
 
