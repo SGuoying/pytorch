@@ -35,8 +35,8 @@ class Squeeze(nn.Module):
 
     def forward(self, x):
         # x shape (batch_size, hidden_dim, height, weight)
-        squeezed = self.squeeze(x) + self.squeeze_max(x)
-        squeezed = self.sigmoid(squeezed)
+        squeezed = self.squeeze_max(x)
+        
         return squeezed
 
 
