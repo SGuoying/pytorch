@@ -35,7 +35,7 @@ class Squeeze(nn.Module):
 
     def forward(self, x):
         # x shape (batch_size, hidden_dim, height, weight)
-        squeezed = self.squeeze_max(x)
+        squeezed = self.squeeze(x)
         
         return squeezed
 
