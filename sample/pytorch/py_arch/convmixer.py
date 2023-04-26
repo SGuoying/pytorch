@@ -9,19 +9,6 @@ from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, Layer, Residual
 
 from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
 
-class LKA(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.conv0 = nn.Conv2d(dim, dim, 3, padding=1, groups=dim)
-        self.conv_spatial = nn.Conv2d(dim, dim, 5, stride=1, padding="same", groups=dim, dilation=2)
-        self.conv1 = nn.Conv2d(dim, dim, 1)
-
-    def forward(self, x):
-        u = x.clone()
-        attn = self.conv0(x)
-        attn = self.conv_spatial(attn)
-        attn = self.conv1(attn)
-        return attn * u
 @dataclass
 class ConvMixerCfg(BaseCfg):
     hidden_dim: int = 256
@@ -95,61 +82,6 @@ class ConvMixer(BaseModule):
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss
 
-@dataclass
-class IsotropicCfg(BaseCfg):
-    hidden_dim: int = 128
-    kernel_size: int = 5
-    patch_size: int = 2
-    num_classes: int = 10
-
-    drop_rate: float = 0. 
-   
-class Isotropic(BaseModule):
-    def __init__(self, cfg: IsotropicCfg):
-        super().__init__(cfg)
-
-        self.layers = nn.ModuleList([
-            ConvMixerLayer(cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
-            # Layer(cfg.hidden_dim, cfg.drop_rate)
-            for _ in range(cfg.num_layers)
-        ])
-
-        self.embed = nn.Sequential(
-            nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
-            nn.GELU(),
-            nn.BatchNorm2d(cfg.hidden_dim, eps=7e-5),  # eps>6.1e-5 to avoid nan in half precision
-        )
-        
-        self.digup = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1,1)),
-            nn.Flatten(),
-            nn.Linear(cfg.hidden_dim, cfg.num_classes)
-        )
-
-        self.cfg = cfg
-        log_prior = torch.zeros(1, cfg.num_classes)
-        self.register_buffer('log_prior', log_prior) 
-        
-    def forward(self, x):
-        batch_size, _, _, _ = x.shape
-        log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
-        x = self.embed(x)
-        for layer in self.layers:
-            x = x + layer(x)
-            logits = self.digup(x)
-            log_prior = log_bayesian_iteration(log_prior, logits)
-        return log_prior
-
-    def _step(self, batch, mode="train"):  # or "val"
-        input, target = batch
-        logits = self.forward(input)
-        loss = F.cross_entropy(logits, target)
-        # loss = self.variational_inference(input, target, 10)
-        self.log(mode + "_loss", loss, prog_bar=True)
-        accuracy = (logits.argmax(dim=1) == target).float().mean()
-        self.log(mode + "_accuracy", accuracy, prog_bar=True)
-        return loss
-    
 class SumConvMixer(ConvMixer):
     def __init__(self, cfg:ConvMixerCfg):
         super().__init__(cfg)

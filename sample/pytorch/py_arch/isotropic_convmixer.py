@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, BaseModule
+from sample.pytorch.py_arch.convmixer import SE
 
 
 
@@ -15,7 +16,8 @@ class IsotropicCfg(BaseCfg):
     patch_size: int = 2
     num_classes: int = 10
 
-    drop_rate: float = 0.    
+    drop_rate: float = 0.
+    squeeze_factor: int = 4    
 
 # %%
 class Isotropic(BaseModule):
@@ -26,6 +28,8 @@ class Isotropic(BaseModule):
             ConvMixerLayer(cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
             for _ in range(cfg.num_layers)
         ])
+
+        self.se = SE(cfg.hidden_dim, cfg.squeeze_factor)
 
         self.embed = nn.Sequential(
             nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
@@ -45,6 +49,7 @@ class Isotropic(BaseModule):
         x = self.embed(x)
         for layer in self.layers:
             x = x + layer(x)
+            x = self.se(x)
         x = self.digup(x)
         return x
 
