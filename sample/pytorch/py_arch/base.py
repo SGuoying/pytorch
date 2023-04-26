@@ -156,19 +156,6 @@ class LKALayer(nn.Sequential):
             StochasticDepth(drop_rate, 'row') if drop_rate > 0. else nn.Identity(),
         )
 
-class Layer(nn.Sequential):
-    def __init__(self, hidden_dim: int, drop_rate: float=0.):
-        super().__init__(
-            nn.Conv2d(hidden_dim, hidden_dim, 1),
-            nn.GELU(),
-            nn.BatchNorm2d(hidden_dim),
-            nn.Conv2d(hidden_dim, hidden_dim, 1),
-            nn.GELU(),
-            nn.BatchNorm2d(hidden_dim),
-            nn.Conv2d(hidden_dim, hidden_dim, 1),
-            nn.Dropout(drop_rate),
-        )
-
 class BaseModule(pl.LightningModule):
     def __init__(self, cfg:BaseCfg):
         super().__init__()
