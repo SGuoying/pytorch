@@ -49,7 +49,7 @@ class Isotropic(BaseModule):
         x = self.embed(x)
         for layer in self.layers:
             x = x + layer(x)
-            x = self.se(x)
+            # x = self.se(x)
         x = self.digup(x)
         return x
 
