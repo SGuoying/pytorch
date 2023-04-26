@@ -29,7 +29,7 @@ class Isotropic(BaseModule):
             for _ in range(cfg.num_layers)
         ])
 
-        self.se = SE(cfg.hidden_dim, cfg.squeeze_factor)
+        # self.se = SE(cfg.hidden_dim, cfg.squeeze_factor)
 
         self.embed = nn.Sequential(
             nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
