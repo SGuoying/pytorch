@@ -69,8 +69,8 @@ class ConvMixer(BaseModule):
 
     def forward(self, x):
         x = self.embed(x)
-        x= self.layers(x)
-        x= self.digup(x)
+        x = self.layers(x)
+        x = self.digup(x)
         return x
 
     def _step(self, batch, mode="train"):  # or "val"
