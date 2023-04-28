@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from torchvision.ops import StochasticDepth
 import pytorch_lightning as pl
 
+from sample.pytorch.py_arch.convmixer import SE
+
 
 class RevSGD(torch.optim.Optimizer):
     def __init__(
@@ -158,19 +160,20 @@ class ConvMixerLayer2(nn.Sequential):
         )
 
 class ConvMixerLayer3(nn.Sequential):
-    def __init__(self, hidden_dim: int, kernel_size: int, drop_rate: float=0.):
+    def __init__(self, hidden_dim: int, kernel_size: int, squeeze_factor: int = 4):
         super().__init__(
             Residual(nn.Sequential(
                 nn.Conv2d(hidden_dim, hidden_dim, kernel_size, groups=hidden_dim, padding="same"),
                 nn.GELU(),
                 nn.BatchNorm2d(hidden_dim),
             )),
+            SE(hidden_dim, squeeze_factor),
             Residual(nn.Sequential(
                 nn.Conv2d(hidden_dim, hidden_dim, kernel_size=1),
                 nn.GELU(),
                 nn.BatchNorm2d(hidden_dim), 
             )),
-            StochasticDepth(drop_rate, 'row') if drop_rate > 0. else nn.Identity(),
+            # StochasticDepth(drop_rate, 'row') if drop_rate > 0. else nn.Identity(),
             
         )
 
