@@ -182,26 +182,27 @@ class BayesConvMixer2(ConvMixer):
 class NormConvMixer(ConvMixer):
     def __init__(self, cfg:ConvMixerCfg):
         super().__init__(cfg)
+        self.digup = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1,1)),
+            nn.Flatten(),
+        )
+        self.fc = nn.Linear(cfg.hidden_dim, cfg.num_classes)
 
-        log_prior = torch.zeros(1, cfg.num_classes)
-        self.register_buffer('log_prior', log_prior) 
-        # self.log_prior = nn.Parameter(torch.zeros(1, cfg.num_classes))
-        # self.cfg = cfg
         self.logits_layer_norm = nn.LayerNorm(cfg.num_classes)
 
     def forward(self, x):
-        batch_size, _, _, _ = x.shape
-        log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
+        # batch_size, _, _, _ = x.shape
+        # log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
 
         x = self.embed(x)
+        logits = self.digup(x)
         for layer in self.layers:
             x = layer(x)
-            logits = self.digup(x) 
+            logits = logits + self.digup(x) 
             # log_prior = log_bayesian_iteration(log_prior, logits)
-            log_prior = log_prior + logits
-            log_prior = self.logits_layer_norm(log_prior)
-        
-        return log_prior
+            logits = self.logits_layer_norm(logits)
+        logits = self.fc(logits)
+        return logits
 
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
