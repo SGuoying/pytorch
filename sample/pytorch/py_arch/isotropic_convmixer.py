@@ -80,7 +80,7 @@ class Isotropic3(Isotropic):
     def __init__(self, cfg: IsotropicCfg):
         super().__init__(cfg)
         self.layers = nn.Sequential(*[
-            ConvMixerLayer3(cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
+            ConvMixerLayer3(cfg.hidden_dim, cfg.kernel_size, cfg.squeeze_factor, cfg.drop_rate)
             for _ in range(cfg.num_layers)
         ])
 

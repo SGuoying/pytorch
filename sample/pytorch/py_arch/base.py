@@ -174,7 +174,7 @@ class ConvMixerLayer2(nn.Sequential):
         )
 
 class ConvMixerLayer3(nn.Sequential):
-    def __init__(self, hidden_dim: int, kernel_size: int, squeeze_factor: int = 4):
+    def __init__(self, hidden_dim: int, kernel_size: int, squeeze_factor: int = 4, drop_rate: float=0.):
         super().__init__(
             Residual(nn.Sequential(
                 nn.Conv2d(hidden_dim, hidden_dim, kernel_size, groups=hidden_dim, padding="same"),
@@ -187,7 +187,7 @@ class ConvMixerLayer3(nn.Sequential):
                 nn.GELU(),
                 nn.BatchNorm2d(hidden_dim), 
             )),
-            # StochasticDepth(drop_rate, 'row') if drop_rate > 0. else nn.Identity(),
+            StochasticDepth(drop_rate, 'row') if drop_rate > 0. else nn.Identity(),
             
         )
 
