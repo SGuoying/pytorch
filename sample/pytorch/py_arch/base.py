@@ -7,8 +7,6 @@ from dataclasses import dataclass
 from torchvision.ops import StochasticDepth
 import pytorch_lightning as pl
 
-from sample.pytorch.py_arch.convmixer import SE
-
 
 class RevSGD(torch.optim.Optimizer):
     def __init__(
@@ -50,7 +48,23 @@ class BaseCfg:
     steps_per_epoch: int = None
     last_epoch: int = -1
 
-
+class SE(nn.Module):
+    def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
+        super().__init__()
+        squeeze_c = hidden_dim // squeeze_factor
+        self.squeeze = nn.AdaptiveAvgPool2d((1, 1))
+        self.excitation = nn.Sequential(
+			nn.Conv2d(hidden_dim, squeeze_c, 1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(squeeze_c , hidden_dim, 1),
+			nn.Sigmoid())
+        
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        scale = self.squeeze(x)
+        scale = self.excitation(scale)
+        return x * scale  
+    
 class ChannelAttention(nn.Module):
     def __init__(self, dim, ratio=4):
         super(ChannelAttention, self).__init__()
