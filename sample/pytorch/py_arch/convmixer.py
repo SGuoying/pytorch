@@ -188,7 +188,7 @@ class NormConvMixer(ConvMixer):
         )
         self.fc = nn.Linear(cfg.hidden_dim, cfg.num_classes)
 
-        self.logits_layer_norm = nn.LayerNorm(cfg.num_classes)
+        self.logits_layer_norm = nn.LayerNorm(cfg.hidden_dim)
 
     def forward(self, x):
         # batch_size, _, _, _ = x.shape
