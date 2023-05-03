@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 from sample.pytorch.py_arch.base import BaseCfg, Residual, BaseModule
 
 from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
+trainer = pl.Trainer()
 
 @dataclass
 class ConvMixerCfg(BaseCfg):
@@ -46,7 +47,7 @@ class ConvMixer(BaseModule):
                     nn.GELU(),
                     nn.BatchNorm2d(cfg.hidden_dim),
                 )),
-                SE(cfg.hidden_dim, cfg.squeeze_factor),
+                # SE(cfg.hidden_dim, cfg.squeeze_factor),
                 nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
                 nn.GELU(),
                 nn.BatchNorm2d(cfg.hidden_dim), 
