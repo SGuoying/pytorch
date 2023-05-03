@@ -135,8 +135,7 @@ class BayesConvMixer(ConvMixer):
         accuracy = (log_posterior.argmax(dim=-1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss
-
-        
+      
 class BayesConvMixer2(ConvMixer):
     def __init__(self, cfg:ConvMixerCfg):
         super().__init__(cfg)

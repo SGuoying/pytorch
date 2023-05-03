@@ -8,7 +8,6 @@ from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, BaseModule, Con
 from sample.pytorch.py_arch.convmixer import SE
 
 
-
 @dataclass
 class IsotropicCfg(BaseCfg):
     hidden_dim: int = 128
@@ -16,8 +15,7 @@ class IsotropicCfg(BaseCfg):
     patch_size: int = 2
     num_classes: int = 10
 
-    drop_rate: float = 0.
-    squeeze_factor: int = 4    
+    drop_rate: float = 0.    
 
 # %%
 class Isotropic(BaseModule):
@@ -28,8 +26,6 @@ class Isotropic(BaseModule):
             ConvMixerLayer(cfg.hidden_dim, cfg.kernel_size, cfg.drop_rate)
             for _ in range(cfg.num_layers)
         ])
-
-        # self.se = SE(cfg.hidden_dim, cfg.squeeze_factor)
 
         self.embed = nn.Sequential(
             nn.Conv2d(3, cfg.hidden_dim, kernel_size=cfg.patch_size, stride=cfg.patch_size),
@@ -49,7 +45,6 @@ class Isotropic(BaseModule):
         x = self.embed(x)
         for layer in self.layers:
             x = x + layer(x)
-            # x = self.se(x)
         x = self.digup(x)
         return x
 
@@ -60,8 +55,9 @@ class Isotropic(BaseModule):
         self.log(mode + "_loss", loss, prog_bar=True)
         accuracy = (logits.argmax(dim=1) == target).float().mean()
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
-        return loss  
+        return loss    
 
+# %%
 class Isotropic2(Isotropic):
     def __init__(self, cfg: IsotropicCfg):
         super().__init__(cfg)
@@ -72,10 +68,61 @@ class Isotropic2(Isotropic):
 
     def forward(self, x):
         x = self.embed(x)
-        x = self.layers(x)
-        x = self.digup(x)
+        x= self.layers(x)
+        x= self.digup(x)
         return x
-    
+
+
+# %%
+class BayesIsotropic(Isotropic):
+    def __init__(self, cfg: IsotropicCfg):
+        super().__init__(cfg)
+
+        self.logits_layer_norm = nn.LayerNorm(cfg.hidden_dim)
+        
+        self.digup = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1,1)),
+            nn.Flatten(),
+        )
+        self.fc = nn.Linear(cfg.hidden_dim, cfg.num_classes)
+
+
+    def forward(self, x):
+        x = self.embed(x)
+        logits = self.digup(x)
+        for layer in self.layers:
+            x = x + layer(x)
+            logits = logits + self.digup(x)
+            logits = self.logits_layer_norm(logits)
+        logits = self.fc(logits)
+        return logits
+
+# %%
+class BayesIsotropic2(Isotropic2):
+    def __init__(self, cfg: IsotropicCfg):
+        super().__init__(cfg)
+
+        self.logits_layer_norm = nn.LayerNorm(cfg.hidden_dim)
+
+        self.digup = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1,1)),
+            nn.Flatten(),
+        )
+        self.fc = nn.Linear(cfg.hidden_dim, cfg.num_classes)
+
+
+    def forward(self, x):
+        x = self.embed(x)
+        logits = self.digup(x)
+        for layer in self.layers:
+            x = layer(x)
+            logits = logits + self.digup(x)
+            logits = self.logits_layer_norm(logits)
+        logits = self.fc(logits)
+        return logits
+
+
+
 class Isotropic3(Isotropic):
     def __init__(self, cfg: IsotropicCfg):
         super().__init__(cfg)
@@ -139,38 +186,3 @@ class BayesIsotropicwithoutRes(BaseModule):
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss   
   
-
-# %%
-class BayesIsotropic(Isotropic):
-    def __init__(self, cfg: IsotropicCfg):
-        super().__init__(cfg)
-
-        self.logits_layer_norm = nn.LayerNorm(cfg.hidden_dim)
-
-        self.digup = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1,1)),
-            nn.Flatten(),
-        )
-        self.fc = nn.Linear(cfg.hidden_dim, cfg.num_classes)
-
-
-    def forward(self, x):
-        x = self.embed(x)
-        logits = self.digup(x)
-        for layer in self.layers:
-            x = x + layer(x)
-            logits = logits + self.digup(x)
-            logits = self.logits_layer_norm(logits)
-        logits = self.fc(logits)
-        return logits
-
-# %%
-# input = torch.randn(2, 3, 256, 256)
-# cfg = IsotropicCfg(
-#     patch_size = 8,
-# )
-# model = BayesIsotropic(cfg)
-
-# model = Isotropic(cfg)
-# output = model(input)
-# output.shape
