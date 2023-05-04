@@ -15,7 +15,8 @@ class IsotropicCfg(BaseCfg):
     patch_size: int = 2
     num_classes: int = 10
 
-    drop_rate: float = 0.    
+    drop_rate: float = 0.  
+    squeeze_factor: int = 4  
 
 # %%
 class Isotropic(BaseModule):
@@ -122,7 +123,6 @@ class BayesIsotropic2(Isotropic2):
         return logits
 
 
-
 class Isotropic3(Isotropic):
     def __init__(self, cfg: IsotropicCfg):
         super().__init__(cfg)
@@ -136,6 +136,7 @@ class Isotropic3(Isotropic):
         x = self.layers(x)
         x = self.digup(x)
         return x
+
 
 class BayesIsotropicwithoutRes(BaseModule):
     def __init__(self, cfg: IsotropicCfg):
