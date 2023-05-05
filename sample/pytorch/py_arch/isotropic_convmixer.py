@@ -137,6 +137,28 @@ class BayesIsotropic2(Isotropic2):
         logits = self.fc(logits)
         return logits
 
+# %%
+class BayesIsotropicSE(IsotropicSE):
+    def __init__(self, cfg: IsotropicCfg):
+        super().__init__(cfg)
+
+        self.logits_layer_norm = nn.LayerNorm(cfg.hidden_dim)
+
+        self.digup = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1,1)),
+            nn.Flatten(),
+        )
+        self.fc = nn.Linear(cfg.hidden_dim, cfg.num_classes)
+
+    def forward(self, x):
+        x = self.embed(x)
+        logits = self.digup(x)
+        for layer in self.layers:
+            x = x + layer(x)
+            logits = logits + self.digup(x)
+            logits = self.logits_layer_norm(logits)
+        logits = self.fc(logits)
+        return logits
 
 class Isotropic3(Isotropic):
     def __init__(self, cfg: IsotropicCfg):
