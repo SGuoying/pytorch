@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, BaseModule, ConvMixerLayer2, ConvMixerLayer3, ConvMixerLayerSE
+from sample.pytorch.py_arch.base import BaseCfg, ConvMixerLayer, BaseModule, ConvMixerLayer2, ConvMixerLayerSE
 from sample.pytorch.py_arch.convmixer import SE
 
 
@@ -161,20 +161,6 @@ class BayesIsotropicSE(IsotropicSE):
             logits = self.logits_layer_norm(logits)
         logits = self.fc(logits)
         return logits
-
-class Isotropic3(Isotropic):
-    def __init__(self, cfg: IsotropicCfg):
-        super().__init__(cfg)
-        self.layers = nn.Sequential(*[
-            ConvMixerLayer3(cfg.hidden_dim, cfg.kernel_size, cfg.squeeze_factor, cfg.drop_rate)
-            for _ in range(cfg.num_layers)
-        ])
-
-    def forward(self, x):
-        x = self.embed(x)
-        x = self.layers(x)
-        x = self.digup(x)
-        return x
 
 class BayesIsotropicwithoutRes(BaseModule):
     def __init__(self, cfg: IsotropicCfg):
