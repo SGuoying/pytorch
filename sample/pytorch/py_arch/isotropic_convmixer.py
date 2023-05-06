@@ -95,6 +95,7 @@ class BayesIsotropic(Isotropic):
         super().__init__(cfg)
 
         self.logits_layer_norm = nn.LayerNorm(cfg.hidden_dim)
+        self.logits_layer_norm.weight.data = torch.zeros(self.logits_layer_norm.weight.data.shape)
         
         self.digup = nn.Sequential(
             nn.AdaptiveAvgPool2d((1,1)),
@@ -143,6 +144,7 @@ class BayesIsotropicSE(IsotropicSE):
         super().__init__(cfg)
 
         self.logits_layer_norm = nn.LayerNorm(cfg.hidden_dim)
+        self.logits_layer_norm.weight.data = torch.zeros(self.logits_layer_norm.weight.data.shape)
 
         self.digup = nn.Sequential(
             nn.AdaptiveAvgPool2d((1,1)),
@@ -173,7 +175,6 @@ class Isotropic3(Isotropic):
         x = self.layers(x)
         x = self.digup(x)
         return x
-
 
 class BayesIsotropicwithoutRes(BaseModule):
     def __init__(self, cfg: IsotropicCfg):
