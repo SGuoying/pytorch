@@ -17,7 +17,7 @@ class ConvMixerCfg(BaseCfg):
     patch_size: int = 2
     num_classes: int = 10
     squeeze_factor: int = 4
-    drop_rate: float = 0.1
+    drop_rate: float = 0.
     
 class SE(nn.Module):
     def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
@@ -47,7 +47,7 @@ class ConvMixer(BaseModule):
                     nn.GELU(),
                     nn.BatchNorm2d(cfg.hidden_dim),
                 )),
-                # SE(cfg.hidden_dim, cfg.squeeze_factor),
+                SE(cfg.hidden_dim, cfg.squeeze_factor),
                 nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
                 nn.GELU(),
                 nn.BatchNorm2d(cfg.hidden_dim), 
@@ -191,9 +191,6 @@ class NormConvMixer(ConvMixer):
         self.logits_layer_norm = nn.LayerNorm(cfg.hidden_dim)
 
     def forward(self, x):
-        # batch_size, _, _, _ = x.shape
-        # log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
-
         x = self.embed(x)
         logits = self.digup(x)
         for layer in self.layers:
