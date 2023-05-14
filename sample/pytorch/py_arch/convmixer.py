@@ -70,7 +70,7 @@ class ConvMixer(BaseModule):
                     nn.GELU(),
                     nn.BatchNorm2d(cfg.hidden_dim),
                 )),
-                SE(cfg.hidden_dim),
+                # SE(cfg.hidden_dim),
                 nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
                 nn.GELU(),
                 nn.BatchNorm2d(cfg.hidden_dim), 
@@ -146,7 +146,8 @@ class BayesConvMixer2(ConvMixer):
         #     nn.AdaptiveAvgPool2d((1, 1)),
         #     nn.Flatten(),
         # )
-        self.digup = eca_layer(dim=cfg.hidden_dim, kernel_size=cfg.eca_kernel_size)
+        self.digup = AvgAttnPooling2d(cfg.hidden_dim)
+        # self.digup = eca_layer(dim=cfg.hidden_dim, kernel_size=cfg.eca_kernel_size)
         self.fc = nn.Linear(cfg.hidden_dim, cfg.num_classes)
 
     def forward(self, x):
