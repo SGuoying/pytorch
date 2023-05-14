@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from einops import repeat
 import pytorch_lightning as pl
 # from sample.pytorch_lightning.base import BaseModule
-from sample.pytorch.py_arch.base import BaseCfg, Residual, BaseModule
+from sample.pytorch.py_arch.base import AvgAttnPooling2d, BaseCfg, Residual, BaseModule
 
 from sample.pytorch.py_arch.bayes.core import log_bayesian_iteration
 trainer = pl.Trainer()
@@ -18,7 +18,30 @@ class ConvMixerCfg(BaseCfg):
     num_classes: int = 10
     squeeze_factor: int = 4
     drop_rate: float = 0.
+    eca_kernel_size: int = 3
     
+
+class eca_layer(nn.Module):
+    def __init__(self, dim: int, kernel_size: int = 3):
+        super(eca_layer, self).__init__()
+        self.attn_pool = AvgAttnPooling2d(dim=dim)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv = nn.Conv1d(1, 1, kernel_size=kernel_size,
+                              padding=(kernel_size-1)//2, bias=False)
+
+    def forward(self, x: torch.Tensor):
+        assert x.ndim == 4
+        #  (batch_size, channels, 1, 1)
+        # y = self.avg_pool(x)
+        y = self.attn_pool(x)
+        # squeeze： (batch_size, channels, 1, 1)变为(batch_size, channels, 1)，
+        # transpose：从(batch_size, channels, 1)变为(batch_size, 1, channels)
+        y = self.conv(y.squeeze(-1).transpose(-1, -2))
+        # transpose： (batch_size, 1, channels)变为(batch_size, channels, 1)，
+        #  squeeze：(batch_size, channels, 1)变为(batch_size, channels)
+        y = y.transpose(-1, -2).squeeze(-1)
+        return y
+
 class SE(nn.Module):
     def __init__(self, hidden_dim: int, squeeze_factor: int = 4):
         super().__init__()
@@ -47,7 +70,7 @@ class ConvMixer(BaseModule):
                     nn.GELU(),
                     nn.BatchNorm2d(cfg.hidden_dim),
                 )),
-                SE(cfg.hidden_dim, cfg.squeeze_factor),
+                SE(cfg.hidden_dim),
                 nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
                 nn.GELU(),
                 nn.BatchNorm2d(cfg.hidden_dim), 
@@ -83,28 +106,6 @@ class ConvMixer(BaseModule):
         self.log(mode + "_accuracy", accuracy, prog_bar=True)
         return loss
 
-class SumConvMixer(ConvMixer):
-    def __init__(self, cfg:ConvMixerCfg):
-        super().__init__(cfg)
-        self.layers = nn.Sequential(*[
-            nn.Sequential(
-                nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, groups=cfg.hidden_dim, padding="same"),
-                nn.GELU(),
-                nn.BatchNorm2d(cfg.hidden_dim),
-                nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
-                nn.GELU(),
-                nn.BatchNorm2d(cfg.hidden_dim)
-            ) for _ in range(cfg.num_layers)
-        ])
-
-    def forward(self, x):
-        x = self.embed(x)
-        x1 = x
-        for layer in self.layers:
-            x1 = layer(x1)
-            x = x + x1
-        x = self.digup(x)
-        return x
 
 class BayesConvMixer(ConvMixer):
     def __init__(self, cfg:ConvMixerCfg):
@@ -139,36 +140,24 @@ class BayesConvMixer(ConvMixer):
 class BayesConvMixer2(ConvMixer):
     def __init__(self, cfg:ConvMixerCfg):
         super().__init__(cfg)
-        self.layers = nn.Sequential(*[
-            nn.Sequential(
-                Residual(nn.Sequential(
-                    nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, cfg.kernel_size, groups=cfg.hidden_dim, padding="same"),
-                    nn.GELU(),
-                    nn.BatchNorm2d(cfg.hidden_dim)
-                )),
-                SE(cfg.hidden_dim, cfg.squeeze_factor),
-                nn.Conv2d(cfg.hidden_dim, cfg.hidden_dim, kernel_size=1),
-                nn.GELU(),
-                nn.BatchNorm2d(cfg.hidden_dim)
-            ) for _ in range(cfg.num_layers)
-        ])
+        self.logits_layer_norm = nn.LayerNorm(cfg.hidden_dim)
 
-        # log_prior = torch.zeros(1, cfg.num_classes)
-        # self.register_buffer('log_prior', log_prior) 
-        self.log_prior = nn.Parameter(torch.zeros(1, cfg.num_classes))
-        self.cfg = cfg
+        # self.digup = nn.Sequential(
+        #     nn.AdaptiveAvgPool2d((1, 1)),
+        #     nn.Flatten(),
+        # )
+        self.digup = eca_layer(dim=cfg.hidden_dim, kernel_size=cfg.eca_kernel_size)
+        self.fc = nn.Linear(cfg.hidden_dim, cfg.num_classes)
 
     def forward(self, x):
-        batch_size, _, _, _ = x.shape
-        log_prior = repeat(self.log_prior, '1 n -> b n', b=batch_size)
-
         x = self.embed(x)
+        logits = self.digup(x)
         for layer in self.layers:
             x = layer(x)
-            logits = self.digup(x) 
-            log_prior = log_bayesian_iteration(log_prior, logits)
-        
-        return log_prior
+            logits = logits + self.digup(x)
+            logits = self.logits_layer_norm(logits)
+        logits = self.fc(logits)
+        return logits
 
     def _step(self, batch, mode="train"):  # or "val"
         input, target = batch
